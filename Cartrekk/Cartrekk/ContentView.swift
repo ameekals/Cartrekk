@@ -6,6 +6,8 @@
 //
 
 import SwiftUI
+import MapKit
+import CoreLocation
 
 struct ContentView: View {
     var body: some View {
@@ -27,12 +29,38 @@ struct ContentView: View {
                         .cornerRadius(10)
                 }
                 .padding(.horizontal)
+                NavigationLink(destination: MapView()) {
+                    Text("MAP")
+                        .font(.title2)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
             }
             .padding()
             .navigationBarHidden(true)
         }
     }
 }
+struct MapView: View{
+    
+    @State private var cameraPosition: MapCameraPosition = .userLocation(
+        fallback: .automatic
+        )
+    var body: some View {
+        Map(position: $cameraPosition){
+            UserAnnotation()
+        }
+        .onAppear{
+            CLLocationManager().requestWhenInUseAuthorization()
+        }
+    }
+}
+
+
+
 
 struct TimerView: View {
     @State private var isRecording = false
