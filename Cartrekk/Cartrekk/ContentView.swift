@@ -8,65 +8,112 @@
 import SwiftUI
 import MapKit
 import CoreLocation
+import FirebaseAuth
 
 struct ContentView: View {
-    @State private var isAuthenticated = false
-    @State private var email = ""
-    @State private var password = ""
-    
+    @State private var isLoggedIn = false
+    @State private var email: String = ""
+    @State private var password: String = ""
+
     var body: some View {
-        if isAuthenticated {
+        if isLoggedIn {
             MainAppView()
         } else {
-            LoginView(isAuthenticated: $isAuthenticated)
+            LoginView(isLoggedIn: $isLoggedIn, email: $email, password: $password)
         }
     }
 }
 
 struct LoginView: View {
-    @Binding var isAuthenticated: Bool
-    @State private var email = ""
-    @State private var password = ""
-    
+    @Binding var isLoggedIn: Bool
+    @Binding var email: String
+    @Binding var password: String
+
     var body: some View {
         VStack(spacing: 20) {
             Text("Cartrekk")
                 .font(.largeTitle)
                 .bold()
-            
+
             TextField("Email", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding(.horizontal)
-            
+
             SecureField("Password", text: $password)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
                 .padding(.horizontal)
-            
-            Button("Login") {
-                isAuthenticated = true
+
+            Button(action: {
+                loginWithEmail()
+            }) {
+                Text("Login")
+                    .font(.title2)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
             }
-            .font(.title2)
-            .padding()
-            .frame(maxWidth: .infinity)
-            .background(Color.blue)
-            .foregroundColor(.white)
-            .cornerRadius(10)
             .padding(.horizontal)
-            
-            Button("Sign Up") {
-                // Sign-up logic here
-            }
-            .font(.title2)
-            .padding()
-            
-            Button("Login with Google") {
-                // Google login integration here
-            }
-            .font(.title2)
-            .padding()
+
+//            Button(action: {
+//                signInWithGoogle()
+//            }) {
+//                HStack {
+//                    Image(systemName: "g.circle.fill")
+//                    Text("Sign in with Google")
+//                }
+//                .font(.title2)
+//                .padding()
+//                .frame(maxWidth: .infinity)
+//                .background(Color.red)
+//                .foregroundColor(.white)
+//                .cornerRadius(10)
+//            }
+//            .padding(.horizontal)
         }
         .padding()
     }
+
+    // Email/Password Authentication
+    func loginWithEmail() {
+        Auth.auth().signIn(withEmail: email, password: password) { result, error in
+            if let error = error {
+                print("Login error: \(error.localizedDescription)")
+            } else {
+                isLoggedIn = true
+            }
+        }
+    }
+
+    // Google Sign-In
+//    func signInWithGoogle() {
+//        guard let clientID = FirebaseApp.app()?.options.clientID else { return }
+//
+//        let config = GIDConfiguration(clientID: clientID)
+//        guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else { return }
+//
+//        GIDSignIn.sharedInstance.signIn(with: config, presenting: rootViewController) { user, error in
+//            if let error = error {
+//                print("Google Sign-In error: \(error.localizedDescription)")
+//                return
+//            }
+//
+//            guard let authentication = user?.authentication,
+//                  let idToken = authentication.idToken else { return }
+//
+//            let credential = GoogleAuthProvider.credential(withIDToken: idToken,
+//                                                           accessToken: authentication.accessToken)
+//
+//            Auth.auth().signIn(with: credential) { result, error in
+//                if let error = error {
+//                    print("Firebase authentication error: \(error.localizedDescription)")
+//                } else {
+//                    isLoggedIn = true
+//                }
+//            }
+//        }
+//    }
 }
 
 struct MainAppView: View {
