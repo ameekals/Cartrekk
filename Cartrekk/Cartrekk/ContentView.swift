@@ -10,15 +10,73 @@ import MapKit
 import CoreLocation
 
 struct ContentView: View {
+    @State private var isAuthenticated = false
+    @State private var email = ""
+    @State private var password = ""
+    
+    var body: some View {
+        if isAuthenticated {
+            MainAppView()
+        } else {
+            LoginView(isAuthenticated: $isAuthenticated)
+        }
+    }
+}
+
+struct LoginView: View {
+    @Binding var isAuthenticated: Bool
+    @State private var email = ""
+    @State private var password = ""
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Cartrekk")
+                .font(.largeTitle)
+                .bold()
+            
+            TextField("Email", text: $email)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.horizontal)
+            
+            SecureField("Password", text: $password)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding(.horizontal)
+            
+            Button("Login") {
+                isAuthenticated = true
+            }
+            .font(.title2)
+            .padding()
+            .frame(maxWidth: .infinity)
+            .background(Color.blue)
+            .foregroundColor(.white)
+            .cornerRadius(10)
+            .padding(.horizontal)
+            
+            Button("Sign Up") {
+                // Sign-up logic here
+            }
+            .font(.title2)
+            .padding()
+            
+            Button("Login with Google") {
+                // Google login integration here
+            }
+            .font(.title2)
+            .padding()
+        }
+        .padding()
+    }
+}
+
+struct MainAppView: View {
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
-                // Title
                 Text("Cartrekk")
                     .font(.largeTitle)
                     .bold()
-
-                // Start Button
+                
                 NavigationLink(destination: TimerView()) {
                     Text("Start")
                         .font(.title2)
@@ -29,6 +87,7 @@ struct ContentView: View {
                         .cornerRadius(10)
                 }
                 .padding(.horizontal)
+                
                 NavigationLink(destination: MapView()) {
                     Text("MAP")
                         .font(.title2)
@@ -44,7 +103,8 @@ struct ContentView: View {
         }
     }
 }
-struct MapView: View{
+
+struct MapView: View {
     
     @State private var cameraPosition: MapCameraPosition = .userLocation(
         fallback: .automatic
@@ -58,9 +118,6 @@ struct MapView: View{
         }
     }
 }
-
-
-
 
 struct TimerView: View {
     @State private var isRecording = false
