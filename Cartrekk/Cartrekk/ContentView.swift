@@ -9,6 +9,10 @@ import SwiftUI
 import MapKit
 import CoreLocation
 import FirebaseAuth
+import Firebase
+import FirebaseFirestore
+
+
 
 struct ContentView: View {
     @State private var isLoggedIn = false
@@ -32,7 +36,7 @@ struct LoginView: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("Cartrekk")
-                .font(.largeTitle)
+                .font(.largeTitle)      
                 .bold()
 
             TextField("Email", text: $email)
