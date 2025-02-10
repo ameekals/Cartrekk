@@ -44,19 +44,44 @@ struct ContentView: View {
         }
     }
 }
-struct MapView: View{
+
+struct MapView: View {
+    @StateObject private var locationService = LocationTrackingService()
+    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+    @State private var route: Route?
     
-    @State private var cameraPosition: MapCameraPosition = .userLocation(
-        fallback: .automatic
-        )
     var body: some View {
-        Map(position: $cameraPosition){
-            UserAnnotation()
+            VStack {
+                Map(position: $cameraPosition) {
+                    UserAnnotation()
+                    
+                    // Draw the route if we have locations
+                    if !locationService.locations.isEmpty {
+                        MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
+                            .stroke(.blue, lineWidth: 3)
+                    }
+                }
+                
+                Button(action: {
+                    if locationService.isTracking {
+                        locationService.stopTracking()
+                        route = locationService.saveRoute()
+                    } else {
+                        locationService.startTracking()
+                    }
+                }) {
+                    Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                        .padding()
+                        .background(locationService.isTracking ? Color.red : Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                }
+                .padding()
+            }
+            .onAppear {
+                CLLocationManager().requestWhenInUseAuthorization()
+            }
         }
-        .onAppear{
-            CLLocationManager().requestWhenInUseAuthorization()
-        }
-    }
 }
 
 
