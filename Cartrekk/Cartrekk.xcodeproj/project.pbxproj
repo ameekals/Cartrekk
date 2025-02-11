@@ -224,6 +224,7 @@
 			packageReferences = (
 				9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				AEB694852D5B36120041BC5C /* XCRemoteSwiftPackageReference "aws-sdk-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B3090AC2D3B98C700451524 /* Products */;
@@ -441,7 +442,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.Cartrekk";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.Cartrekk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -472,7 +473,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.Cartrekk";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.Cartrekk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -490,7 +491,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkTests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -509,7 +510,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkTests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -526,7 +527,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -543,7 +544,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -638,7 +639,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.Cartrekk";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.Cartrekk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -656,7 +657,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkTests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -673,7 +674,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -742,6 +743,14 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 11.7.0;
+			};
+		};
+		AEB694852D5B36120041BC5C /* XCRemoteSwiftPackageReference "aws-sdk-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/aws-amplify/aws-sdk-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.40.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
