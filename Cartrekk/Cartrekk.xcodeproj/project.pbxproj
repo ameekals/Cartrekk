@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		9B4DE6542D59DEDA002FCF8C /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 9B4DE6532D59DEDA002FCF8C /* GoogleSignIn */; };
 		9B4DE6562D59DEDA002FCF8C /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9B4DE6552D59DEDA002FCF8C /* GoogleSignInSwift */; };
+		9B9A03B72D5B355900D58C92 /* Polyline in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9A03B62D5B355900D58C92 /* Polyline */; };
 		9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD02D4F0A34009116E6 /* FirebaseAuth */; };
 		9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD22D4F0A34009116E6 /* FirebaseCore */; };
 		9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD42D4F0A34009116E6 /* FirebaseFirestore */; };
@@ -75,6 +76,7 @@
 			files = (
 				9B4DE6562D59DEDA002FCF8C /* GoogleSignInSwift in Frameworks */,
 				9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */,
+				9B9A03B72D5B355900D58C92 /* Polyline in Frameworks */,
 				9B4DE6542D59DEDA002FCF8C /* GoogleSignIn in Frameworks */,
 				9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */,
 				9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */,
@@ -151,6 +153,7 @@
 				9BB60AD42D4F0A34009116E6 /* FirebaseFirestore */,
 				9B4DE6532D59DEDA002FCF8C /* GoogleSignIn */,
 				9B4DE6552D59DEDA002FCF8C /* GoogleSignInSwift */,
+				9B9A03B62D5B355900D58C92 /* Polyline */,
 			);
 			productName = Cartrekk;
 			productReference = 9B3090AB2D3B98C700451524 /* Cartrekk.app */;
@@ -237,6 +240,7 @@
 			packageReferences = (
 				9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				9B9A03B52D5B355900D58C92 /* XCRemoteSwiftPackageReference "Polyline" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B3090AC2D3B98C700451524 /* Products */;
@@ -752,6 +756,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		9B9A03B52D5B355900D58C92 /* XCRemoteSwiftPackageReference "Polyline" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/raphaelmor/Polyline.git";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 		9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -772,6 +784,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		9B9A03B62D5B355900D58C92 /* Polyline */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B9A03B52D5B355900D58C92 /* XCRemoteSwiftPackageReference "Polyline" */;
+			productName = Polyline;
 		};
 		9BB60AD02D4F0A34009116E6 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
