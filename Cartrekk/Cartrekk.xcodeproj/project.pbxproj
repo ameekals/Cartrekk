@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		9B4DE6542D59DEDA002FCF8C /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 9B4DE6532D59DEDA002FCF8C /* GoogleSignIn */; };
+		9B4DE6562D59DEDA002FCF8C /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9B4DE6552D59DEDA002FCF8C /* GoogleSignInSwift */; };
 		9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD02D4F0A34009116E6 /* FirebaseAuth */; };
 		9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD22D4F0A34009116E6 /* FirebaseCore */; };
 		9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD42D4F0A34009116E6 /* FirebaseFirestore */; };
@@ -35,9 +37,22 @@
 		9B3090C52D3B98C900451524 /* CartrekkUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CartrekkUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9B9A03B22D59F71500D58C92 /* Exceptions for "Cartrekk" folder in "Cartrekk" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9B3090AA2D3B98C700451524 /* Cartrekk */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9B3090AD2D3B98C700451524 /* Cartrekk */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9B9A03B22D59F71500D58C92 /* Exceptions for "Cartrekk" folder in "Cartrekk" target */,
+			);
 			path = Cartrekk;
 			sourceTree = "<group>";
 		};
@@ -58,7 +73,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				9B4DE6562D59DEDA002FCF8C /* GoogleSignInSwift in Frameworks */,
 				9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */,
+				9B4DE6542D59DEDA002FCF8C /* GoogleSignIn in Frameworks */,
 				9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */,
 				9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */,
 			);
@@ -132,6 +149,8 @@
 				9BB60AD02D4F0A34009116E6 /* FirebaseAuth */,
 				9BB60AD22D4F0A34009116E6 /* FirebaseCore */,
 				9BB60AD42D4F0A34009116E6 /* FirebaseFirestore */,
+				9B4DE6532D59DEDA002FCF8C /* GoogleSignIn */,
+				9B4DE6552D59DEDA002FCF8C /* GoogleSignInSwift */,
 			);
 			productName = Cartrekk;
 			productReference = 9B3090AB2D3B98C700451524 /* Cartrekk.app */;
@@ -217,6 +236,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B3090AC2D3B98C700451524 /* Products */;
@@ -422,6 +442,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Cartrekk/Info.plist;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -453,6 +474,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Cartrekk/Info.plist;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -619,6 +641,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Cartrekk/Info.plist;
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -721,6 +744,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/google/GoogleSignIn-iOS";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.0.0;
+			};
+		};
 		9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -732,6 +763,16 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		9B4DE6532D59DEDA002FCF8C /* GoogleSignIn */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignIn;
+		};
+		9B4DE6552D59DEDA002FCF8C /* GoogleSignInSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
+			productName = GoogleSignInSwift;
+		};
 		9BB60AD02D4F0A34009116E6 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;

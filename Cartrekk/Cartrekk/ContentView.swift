@@ -11,7 +11,7 @@ import CoreLocation
 import FirebaseAuth
 import Firebase
 import FirebaseFirestore
-
+import GoogleSignIn
 
 
 struct ContentView: View {
@@ -28,6 +28,7 @@ struct ContentView: View {
     }
 }
 
+// MARK: - Login View
 struct LoginView: View {
     @Binding var isLoggedIn: Bool
     @Binding var email: String
@@ -60,26 +61,25 @@ struct LoginView: View {
             }
             .padding(.horizontal)
 
-//            Button(action: {
-//                signInWithGoogle()
-//            }) {
-//                HStack {
-//                    Image(systemName: "g.circle.fill")
-//                    Text("Sign in with Google")
-//                }
-//                .font(.title2)
-//                .padding()
-//                .frame(maxWidth: .infinity)
-//                .background(Color.red)
-//                .foregroundColor(.white)
-//                .cornerRadius(10)
-//            }
-//            .padding(.horizontal)
+            Button(action: {
+                signInWithGoogle()
+            }) {
+                HStack {
+                    Image(systemName: "g.circle.fill")
+                    Text("Sign in with Google")
+                }
+                .font(.title2)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(Color.red)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+            }
+            .padding(.horizontal)
         }
         .padding()
     }
 
-    // Email/Password Authentication
     func loginWithEmail() {
         Auth.auth().signIn(withEmail: email, password: password) { result, error in
             if let error = error {
@@ -89,37 +89,44 @@ struct LoginView: View {
             }
         }
     }
+    
+    func signInWithGoogle() {
+        guard let presentingViewController = (UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap { $0.windows }
+            .first { $0.isKeyWindow }?
+            .rootViewController) else {
+            print("Error: No root view controller found.")
+            return
+        }
 
-    // Google Sign-In
-//    func signInWithGoogle() {
-//        guard let clientID = FirebaseApp.app()?.options.clientID else { return }
-//
-//        let config = GIDConfiguration(clientID: clientID)
-//        guard let rootViewController = UIApplication.shared.windows.first?.rootViewController else { return }
-//
-//        GIDSignIn.sharedInstance.signIn(with: config, presenting: rootViewController) { user, error in
-//            if let error = error {
-//                print("Google Sign-In error: \(error.localizedDescription)")
-//                return
-//            }
-//
-//            guard let authentication = user?.authentication,
-//                  let idToken = authentication.idToken else { return }
-//
-//            let credential = GoogleAuthProvider.credential(withIDToken: idToken,
-//                                                           accessToken: authentication.accessToken)
-//
-//            Auth.auth().signIn(with: credential) { result, error in
-//                if let error = error {
-//                    print("Firebase authentication error: \(error.localizedDescription)")
-//                } else {
-//                    isLoggedIn = true
-//                }
-//            }
-//        }
-//    }
+        GIDSignIn.sharedInstance.signIn(withPresenting: presentingViewController) { signInResult, error in
+            if let error = error {
+                print("Google Sign-In error: \(error.localizedDescription)")
+                return
+            }
+
+            guard let user = signInResult?.user,
+                  let idToken = user.idToken?.tokenString else {
+                print("Error: Missing ID Token.")
+                return
+            }
+
+            let credential = GoogleAuthProvider.credential(withIDToken: idToken,
+                                                           accessToken: user.accessToken.tokenString)
+
+            Auth.auth().signIn(with: credential) { result, error in
+                if let error = error {
+                    print("Firebase authentication error: \(error.localizedDescription)")
+                } else {
+                    isLoggedIn = true
+                }
+            }
+        }
+    }
 }
 
+// MARK: - Main App View
 struct MainAppView: View {
     var body: some View {
         NavigationView {
@@ -155,6 +162,7 @@ struct MainAppView: View {
     }
 }
 
+// MARK: - Map View
 struct MapView: View {
 
     @StateObject private var locationService = LocationTrackingService()
@@ -200,6 +208,7 @@ struct MapView: View {
         }
     }
 
+// MARK: - Timer View
 struct TimerView: View {
     @State private var isRecording = false
     @State private var timer: Timer? = nil
@@ -270,7 +279,6 @@ struct TimerView: View {
         startTime = nil
     }
 
-    // MARK: - Helper Method
     private func formatTimeInterval(_ interval: TimeInterval) -> String {
         let minutes = Int(interval) / 60
         let seconds = Int(interval) % 60
