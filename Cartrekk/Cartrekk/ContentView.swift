@@ -36,7 +36,7 @@ struct LoginView: View {
     var body: some View {
         VStack(spacing: 20) {
             Text("Cartrekk")
-                .font(.largeTitle)      
+                .font(.largeTitle)
                 .bold()
 
             TextField("Email", text: $email)
@@ -172,20 +172,25 @@ struct MapView: View {
                             .stroke(.blue, lineWidth: 3)
                     }
                 }
-                
-                Button(action: {
-                    if locationService.isTracking {
-                        locationService.stopTracking()
-                        route = locationService.saveRoute()
-                    } else {
-                        locationService.startTracking()
+                HStack {
+                    Button(action: {
+                        if locationService.isTracking {
+                            locationService.stopTracking()
+                            route = locationService.saveRoute()
+                        } else {
+                            locationService.startTracking()
+                        }
+                    }) {
+                        Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                            .padding()
+                            .background(locationService.isTracking ? Color.red : Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
                     }
-                }) {
-                    Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                    
+                    Text(String(format: "%.2f km", locationService.totalDistance / 1000))
+                        .font(.headline)
                         .padding()
-                        .background(locationService.isTracking ? Color.red : Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
                 }
                 .padding()
             }
@@ -193,7 +198,7 @@ struct MapView: View {
                 CLLocationManager().requestWhenInUseAuthorization()
             }
         }
-}
+    }
 
 struct TimerView: View {
     @State private var isRecording = false
