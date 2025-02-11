@@ -9,7 +9,10 @@ import SwiftUI
 import MapKit
 import CoreLocation
 import FirebaseAuth
+import Firebase
+import FirebaseFirestore
 import GoogleSignIn
+
 
 struct ContentView: View {
     @State private var isLoggedIn = false
@@ -177,20 +180,25 @@ struct MapView: View {
                             .stroke(.blue, lineWidth: 3)
                     }
                 }
-                
-                Button(action: {
-                    if locationService.isTracking {
-                        locationService.stopTracking()
-                        route = locationService.saveRoute()
-                    } else {
-                        locationService.startTracking()
+                HStack {
+                    Button(action: {
+                        if locationService.isTracking {
+                            locationService.stopTracking()
+                            route = locationService.saveRoute()
+                        } else {
+                            locationService.startTracking()
+                        }
+                    }) {
+                        Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                            .padding()
+                            .background(locationService.isTracking ? Color.red : Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
                     }
-                }) {
-                    Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                    
+                    Text(String(format: "%.2f km", locationService.totalDistance / 1000))
+                        .font(.headline)
                         .padding()
-                        .background(locationService.isTracking ? Color.red : Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
                 }
                 .padding()
             }
@@ -198,7 +206,7 @@ struct MapView: View {
                 CLLocationManager().requestWhenInUseAuthorization()
             }
         }
-}
+    }
 
 // MARK: - Timer View
 struct TimerView: View {

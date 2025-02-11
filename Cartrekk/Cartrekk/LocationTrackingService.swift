@@ -8,14 +8,17 @@
 import Foundation
 import CoreLocation
 import MapKit
+import SwiftUI
+import Polyline
 
 class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var locations: [CLLocation] = []
     @Published var isTracking = false
+    @Published var totalDistance = 0.0
     
     private let locationManager: CLLocationManager
     private let distanceFilter: Double = 10
-    private let timeInterval: TimeInterval = 5
+    private let timeInterval: TimeInterval = 1
     
     init(locationManager: CLLocationManager = CLLocationManager()) {
         self.locationManager = locationManager
@@ -50,6 +53,8 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
         if let lastLocation = locations.last {
             let timeSinceLastUpdate = location.timestamp.timeIntervalSince(lastLocation.timestamp)
             if timeSinceLastUpdate >= timeInterval {
+                let distance = location.distance(from: lastLocation) // Returns distance in meters
+                totalDistance += distance // Add to total distance
                 locations.append(location)
             }
         } else {
@@ -75,7 +80,25 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
                 )
             }
         )
+        let routeId = route.id.uuidString
+        let distance = totalDistance
+        let duration = 70.0
+        let likes = 0
+        let polyline = Polyline(locations: locations)
+        let encodedPolyline: String = polyline.encodedPolyline
+        let isPublic = true
+        let routeImages: [String]? = nil
+        let userId = "preet"
+        
         // Here you would typically save to persistent storage
+        FirestoreManager.shared.saveRouteDetails(routeId: routeId,
+                         distance: distance,
+                         duration: duration,
+                         likes: likes,
+                         polyline: encodedPolyline,
+                         isPublic: isPublic,
+                         routeImages: routeImages,
+                         userId: userId)
         return route
     }
 }
