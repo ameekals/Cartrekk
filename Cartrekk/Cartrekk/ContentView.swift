@@ -14,6 +14,8 @@ import FirebaseFirestore
 import GoogleSignIn
 
 
+
+
 struct ContentView: View {
     @State private var isLoggedIn = false
     @State private var email: String = ""
@@ -126,176 +128,9 @@ struct LoginView: View {
     }
 }
 
-// MARK: - Main App View
-struct MainAppView: View {
-    var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("Cartrekk")
-                    .font(.largeTitle)
-                    .bold()
-                
-                NavigationLink(destination: TimerView()) {
-                    Text("Start")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
-                .padding(.horizontal)
-                
-                NavigationLink(destination: MapView()) {
-                    Text("MAP")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
-            }
-            .padding()
-            .navigationBarHidden(true)
-        }
-    }
-}
-
-// MARK: - Map View
-struct MapView: View {
-    
-    @StateObject private var locationService = LocationTrackingService()
-    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
-    @State private var route: Route?
-    @State private var showCamera = false
-    @State private var capturedImage: UIImage?
-    
-    
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                VStack {
-                    Spacer()
-                    Map(position: $cameraPosition) {
-                        UserAnnotation()
-                        if !locationService.locations.isEmpty {
-                            MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
-                                .stroke(.blue, lineWidth: 3)
-                        }
-                    }
-                    
-                    Button(action: {
-                        if locationService.isTracking {
-                            locationService.stopTracking()
-                            route = locationService.saveRoute()
-                        } else {
-                            locationService.startTracking()
-                        }
-                    }) {
-                        Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
-                            .padding()
-                            .background(locationService.isTracking ? Color.red : Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
-                    }
-                }
-                HStack {
-                    Button(action: {
-                        if locationService.isTracking {
-                            locationService.stopTracking()
-                            route = locationService.saveRoute()
-                        } else {
-                            locationService.startTracking()
-                        }
-                    }) {
-                        Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
-                            .padding()
-                            .background(locationService.isTracking ? Color.red : Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
-                    }
-                    
-                    Text(String(format: "%.2f km", locationService.totalDistance / 1000))
-                        .font(.headline)
-                        .padding()
-            }
-            
-            
-            .toolbar {
-                
-                Button(action: {
-                    showCamera = true
-                }) {
-                    Image(systemName: "camera.circle.fill")
-                        .resizable()
-                        .frame(width: 30, height: 30)
-                        .foregroundColor(.white)
-                        .background(Color.blue.opacity(0.9))
-                        .clipShape(Circle())
-                    
-                    
-                    
-                }
-                    
-                
-            }
-            
-            .sheet(isPresented: $showCamera) {
-                CameraView(image: $capturedImage)
-            }
-            .onAppear {
-                CLLocationManager().requestAlwaysAuthorization()
-            }
-        }
-    }
-}
 
 
 
-struct CameraView: UIViewControllerRepresentable {
-    @Binding var image: UIImage?
-
-    func makeCoordinator() -> Coordinator {
-        return Coordinator(self)
-    }
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        picker.allowsEditing = false
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraView
-
-        init(_ parent: CameraView) {
-            self.parent = parent
-        }
-
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let selectedImage = info[.originalImage] as? UIImage {
-                parent.image = selectedImage
-            }
-            picker.dismiss(animated: true)
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
-        }
-    }
-}
-
-
-
-
-
-// MARK: - Timer View
 struct TimerView: View {
     @State private var isRecording = false
     @State private var timer: Timer? = nil
@@ -373,6 +208,173 @@ struct TimerView: View {
     }
 }
 
+
+
+
+
+
+
+// MARK: - Main App View
+struct MainAppView: View {
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                Text("Cartrekk")
+                    .font(.largeTitle)
+                    .bold()
+                
+                NavigationLink(destination: TimerView()) {
+                    Text("Start")
+                        .font(.title2)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                
+                NavigationLink(destination: MapView()) {
+                    Text("MAP")
+                        .font(.title2)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+            }
+            .padding()
+            .navigationBarHidden(true)
+        }
+    }
+}
+
+// MARK: - Map View
+struct MapView: View {
+    
+    @StateObject private var locationService = LocationTrackingService()
+    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+    @State private var route: Route?
+    @State private var showCamera = false
+    @State private var capturedImage: UIImage?
+    
+    
+    
+    var body: some View {
+        NavigationView {
+            ZStack {
+                VStack {
+                    Spacer()
+                    Map(position: $cameraPosition) {
+                        UserAnnotation()
+                        if !locationService.locations.isEmpty {
+                            MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
+                                .stroke(.blue, lineWidth: 3)
+                        }
+                    
+                    }
+                
+                    HStack{
+                        Button(action: {
+                            if locationService.isTracking {
+                                locationService.stopTracking()
+                                route = locationService.saveRoute()
+                            } else {
+                                locationService.startTracking()
+                            }
+                        }) {
+                            Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                                .padding()
+                                .background(locationService.isTracking ? Color.red : Color.green)
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                        }
+                        
+                        Text(String(format: "%.2f km", locationService.totalDistance / 1000))
+                            .font(.headline)
+                            .padding()
+                    }
+                }
+            }
+            
+            
+            .toolbar {
+                
+                Button(action: {
+                    showCamera = true
+                }) {
+                    Image(systemName: "camera.circle.fill")
+                        .resizable()
+                        .frame(width: 30, height: 30)
+                        .foregroundColor(.white)
+                        .background(Color.blue.opacity(0.9))
+                        .clipShape(Circle())
+                    
+                    
+                    
+                }
+                    
+                
+            }
+            
+            .sheet(isPresented: $showCamera) {
+                CameraView(image: $capturedImage)
+            }
+            .onAppear {
+                CLLocationManager().requestAlwaysAuthorization()
+            }
+        }
+    }
+}
+
+
+
+struct CameraView: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(self)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        picker.allowsEditing = false
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraView
+
+        init(_ parent: CameraView) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let selectedImage = info[.originalImage] as? UIImage {
+                parent.image = selectedImage
+            }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
+
+
+
+
+
+// MARK: - Timer View
+
+
 #Preview {
+    
     MapView()
 }

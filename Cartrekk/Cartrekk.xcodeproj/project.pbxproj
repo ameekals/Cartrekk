@@ -241,8 +241,9 @@
 				9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				9B9A03B52D5B355900D58C92 /* XCRemoteSwiftPackageReference "Polyline" */,
-
 				AEB694852D5B36120041BC5C /* XCRemoteSwiftPackageReference "aws-sdk-ios" */,
+				AEB694F92D5D95950041BC5C /* XCRemoteSwiftPackageReference "soto" */,
+				AEB694FA2D5D99240041BC5C /* XCRemoteSwiftPackageReference "amplify-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B3090AC2D3B98C700451524 /* Products */;
@@ -445,7 +446,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = 87PW9875PV;
+				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
@@ -478,7 +479,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = 87PW9875PV;
+				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
@@ -646,7 +647,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = 87PW9875PV;
+				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
@@ -783,6 +784,22 @@
 			requirement = {
 				kind = upToNextMajorVersion;
 				minimumVersion = 2.40.1;
+			};
+		};
+		AEB694F92D5D95950041BC5C /* XCRemoteSwiftPackageReference "soto" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/soto-project/soto";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 7.3.0;
+			};
+		};
+		AEB694FA2D5D99240041BC5C /* XCRemoteSwiftPackageReference "amplify-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/aws-amplify/amplify-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.45.4;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */
