@@ -135,19 +135,8 @@ struct MainAppView: View {
                     .font(.largeTitle)
                     .bold()
                 
-                NavigationLink(destination: TimerView()) {
-                    Text("Start")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
-                .padding(.horizontal)
-                
                 NavigationLink(destination: MapView()) {
-                    Text("MAP")
+                    Text("START")
                         .font(.title2)
                         .padding()
                         .frame(maxWidth: .infinity)
@@ -162,104 +151,73 @@ struct MainAppView: View {
     }
 }
 
-// MARK: - Map View
+// MARK: - Map View with Timer
 struct MapView: View {
 
     @StateObject private var locationService = LocationTrackingService()
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var route: Route?
-    
-    var body: some View {
-            VStack {
-                Map(position: $cameraPosition) {
-                    UserAnnotation()
-                    
-                    // Draw the route if we have locations
-                    if !locationService.locations.isEmpty {
-                        MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
-                            .stroke(.blue, lineWidth: 3)
-                    }
-                }
-                HStack {
-                    Button(action: {
-                        if locationService.isTracking {
-                            locationService.stopTracking()
-                            route = locationService.saveRoute()
-                        } else {
-                            locationService.startTracking()
-                        }
-                    }) {
-                        Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
-                            .padding()
-                            .background(locationService.isTracking ? Color.red : Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
-                    }
-                    
-                    Text(String(format: "%.2f km", locationService.totalDistance / 1000))
-                        .font(.headline)
-                        .padding()
-                }
-                .padding()
-            }
-            .onAppear {
-                CLLocationManager().requestWhenInUseAuthorization()
-            }
-        }
-    }
 
-// MARK: - Timer View
-struct TimerView: View {
-    @State private var isRecording = false
-    @State private var timer: Timer? = nil
+    // Timer States
+    @State private var isTracking = false
     @State private var startTime: Date? = nil
     @State private var elapsedTime: TimeInterval = 0.0
-    @State private var timesTraveled: [String] = []
-    @State private var distanceTraveled: Double = 0.0 // Distance traveled variable
+    @State private var timer: Timer? = nil
 
     var body: some View {
-        VStack(spacing: 20) {
-            // Timer Display
-            Text(formatTimeInterval(elapsedTime))
-                .font(.largeTitle)
-                .bold()
-
-            // Start/Stop Button
-            Button(action: {
-                isRecording ? stopRecording() : startRecording()
-            }) {
-                Text(isRecording ? "End Recording" : "Start Recording")
-                    .font(.title2)
-                    .padding()
-                    .frame(maxWidth: .infinity)
-                    .background(isRecording ? Color.red : Color.green)
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-            }
-            .padding(.horizontal)
-
-            // Stats List
-            List {
-                Section(header: Text("Stats")) {
-                    Text("Distance Traveled: \(distanceTraveled, specifier: "%.2f") mi")
+        VStack {
+            Map(position: $cameraPosition) {
+                UserAnnotation()
+                
+                if !locationService.locations.isEmpty {
+                    MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
+                        .stroke(.blue, lineWidth: 3)
                 }
-                Section(header: Text("Time Traveled")) {
-                    ForEach(timesTraveled, id: \.self) { time in
-                        Text("Time: \(time)")
+            }
+            
+            VStack {
+                VStack {
+                    Text(formatTimeInterval(elapsedTime)) // Timer
+                        .font(.title2)
+                        .bold()
+                    
+//                    Text(String(format: "%.2f km", locationService.totalDistance / 1000)) // Distance in km
+//                        .font(.headline)
+                    Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137)) // Distance in miles
+                        .font(.headline)
+                }
+                .padding()
+                
+                Button(action: {
+                    if locationService.isTracking {
+                        locationService.stopTracking()
+                        route = locationService.saveRoute()
+                        stopTracking()
+                    } else {
+                        locationService.startTracking()
+                        startTracking()
                     }
+                }) {
+                    Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                        .padding()
+                        .background(locationService.isTracking ? Color.red : Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
                 }
             }
-            .listStyle(InsetGroupedListStyle())
         }
-        .padding()
-        .navigationBarTitle("Timer", displayMode: .inline)
+        .onAppear {
+            CLLocationManager().requestWhenInUseAuthorization()
+        }
     }
 
-    // MARK: - Timer Logic
-    private func startRecording() {
-        isRecording = true
+    // MARK: - Timer and Tracking Logic
+    private func startTracking() {
+        isTracking = true
+        locationService.startTracking()
         startTime = Date()
         elapsedTime = 0.0
+
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             if let startTime = startTime {
                 elapsedTime = Date().timeIntervalSince(startTime)
@@ -267,22 +225,18 @@ struct TimerView: View {
         }
     }
 
-    private func stopRecording() {
-        isRecording = false
+    private func stopTracking() {
+        isTracking = false
+        locationService.stopTracking()
         timer?.invalidate()
         timer = nil
-        if let startTime = startTime {
-            elapsedTime = Date().timeIntervalSince(startTime)
-            timesTraveled.append(formatTimeInterval(elapsedTime))
-        }
-        elapsedTime = 0.0
-        startTime = nil
     }
 
     private func formatTimeInterval(_ interval: TimeInterval) -> String {
+        let hours = Int(interval) / 3600
         let minutes = Int(interval) / 60
         let seconds = Int(interval) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
 }
 
