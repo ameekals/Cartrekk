@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		9B4DE6542D59DEDA002FCF8C /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 9B4DE6532D59DEDA002FCF8C /* GoogleSignIn */; };
 		9B4DE6562D59DEDA002FCF8C /* GoogleSignInSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 9B4DE6552D59DEDA002FCF8C /* GoogleSignInSwift */; };
+		9B9A03B72D5B355900D58C92 /* Polyline in Frameworks */ = {isa = PBXBuildFile; productRef = 9B9A03B62D5B355900D58C92 /* Polyline */; };
 		9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD02D4F0A34009116E6 /* FirebaseAuth */; };
 		9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD22D4F0A34009116E6 /* FirebaseCore */; };
 		9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD42D4F0A34009116E6 /* FirebaseFirestore */; };
@@ -37,9 +38,22 @@
 		9B3090C52D3B98C900451524 /* CartrekkUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CartrekkUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		9B9A03B22D59F71500D58C92 /* Exceptions for "Cartrekk" folder in "Cartrekk" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 9B3090AA2D3B98C700451524 /* Cartrekk */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		9B3090AD2D3B98C700451524 /* Cartrekk */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				9B9A03B22D59F71500D58C92 /* Exceptions for "Cartrekk" folder in "Cartrekk" target */,
+			);
 			path = Cartrekk;
 			sourceTree = "<group>";
 		};
@@ -62,6 +76,7 @@
 			files = (
 				9B4DE6562D59DEDA002FCF8C /* GoogleSignInSwift in Frameworks */,
 				9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */,
+				9B9A03B72D5B355900D58C92 /* Polyline in Frameworks */,
 				9B4DE6542D59DEDA002FCF8C /* GoogleSignIn in Frameworks */,
 				9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */,
 				9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */,
@@ -138,6 +153,7 @@
 				9BB60AD42D4F0A34009116E6 /* FirebaseFirestore */,
 				9B4DE6532D59DEDA002FCF8C /* GoogleSignIn */,
 				9B4DE6552D59DEDA002FCF8C /* GoogleSignInSwift */,
+				9B9A03B62D5B355900D58C92 /* Polyline */,
 			);
 			productName = Cartrekk;
 			productReference = 9B3090AB2D3B98C700451524 /* Cartrekk.app */;
@@ -224,6 +240,8 @@
 			packageReferences = (
 				9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
+				9B9A03B52D5B355900D58C92 /* XCRemoteSwiftPackageReference "Polyline" */,
+
 				AEB694852D5B36120041BC5C /* XCRemoteSwiftPackageReference "aws-sdk-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -427,9 +445,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = DU69WZM376;
+				DEVELOPMENT_TEAM = 87PW9875PV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Cartrekk/Info.plist;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "background tracking";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -458,9 +478,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = DU69WZM376;
+				DEVELOPMENT_TEAM = 87PW9875PV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Cartrekk/Info.plist;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "background tracking";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -624,9 +646,11 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = DU69WZM376;
+				DEVELOPMENT_TEAM = 87PW9875PV;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Cartrekk/Info.plist;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "background tracking";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -737,6 +761,14 @@
 				minimumVersion = 8.0.0;
 			};
 		};
+		9B9A03B52D5B355900D58C92 /* XCRemoteSwiftPackageReference "Polyline" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/raphaelmor/Polyline.git";
+			requirement = {
+				branch = master;
+				kind = branch;
+			};
+		};
 		9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
@@ -765,6 +797,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */;
 			productName = GoogleSignInSwift;
+		};
+		9B9A03B62D5B355900D58C92 /* Polyline */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9B9A03B52D5B355900D58C92 /* XCRemoteSwiftPackageReference "Polyline" */;
+			productName = Polyline;
 		};
 		9BB60AD02D4F0A34009116E6 /* FirebaseAuth */ = {
 			isa = XCSwiftPackageProductDependency;
