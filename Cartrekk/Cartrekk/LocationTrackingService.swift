@@ -68,7 +68,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     }
     
     // MARK: - Route Data Management
-    func saveRoute() -> Route {
+    func saveRoute(raw_userId: String) -> Route {
         let route = Route(
             id: UUID(),
             date: Date(),
@@ -88,7 +88,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
         let encodedPolyline: String = polyline.encodedPolyline
         let isPublic = true
         let routeImages: [String]? = nil
-        let userId = "preet"
+        let userId = raw_userId
         
         // Here you would typically save to persistent storage
         FirestoreManager.shared.saveRouteDetails(routeId: routeId,
@@ -99,6 +99,17 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
                          isPublic: isPublic,
                          routeImages: routeImages,
                          userId: userId)
+        FirestoreManager.shared.getRoutesForUser(userId: "preet") { documents in
+            if let documents = documents {
+                for document in documents {
+                    let data = document
+                    //print("""Route ID: (document.documentID), Distance: (data["distance"] ?? "N/A")")
+                    print(data)
+                }
+            } else {
+                print("No routes found for this user.")
+            }
+        }
         return route
     }
 }
