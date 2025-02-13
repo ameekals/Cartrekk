@@ -164,20 +164,41 @@ struct MainAppView: View {
 
 // MARK: - Map View
 struct MapView: View {
-
+    
     @StateObject private var locationService = LocationTrackingService()
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var route: Route?
+    @State private var showCamera = false
+    @State private var capturedImage: UIImage?
+    
+    
     
     var body: some View {
-            VStack {
-                Map(position: $cameraPosition) {
-                    UserAnnotation()
+        NavigationView {
+            ZStack {
+                VStack {
+                    Spacer()
+                    Map(position: $cameraPosition) {
+                        UserAnnotation()
+                        if !locationService.locations.isEmpty {
+                            MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
+                                .stroke(.blue, lineWidth: 3)
+                        }
+                    }
                     
-                    // Draw the route if we have locations
-                    if !locationService.locations.isEmpty {
-                        MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
-                            .stroke(.blue, lineWidth: 3)
+                    Button(action: {
+                        if locationService.isTracking {
+                            locationService.stopTracking()
+                            route = locationService.saveRoute()
+                        } else {
+                            locationService.startTracking()
+                        }
+                    }) {
+                        Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                            .padding()
+                            .background(locationService.isTracking ? Color.red : Color.green)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
                     }
                 }
                 HStack {
@@ -199,14 +220,80 @@ struct MapView: View {
                     Text(String(format: "%.2f km", locationService.totalDistance / 1000))
                         .font(.headline)
                         .padding()
+            }
+            
+            
+            .toolbar {
+                
+                Button(action: {
+                    showCamera = true
+                }) {
+                    Image(systemName: "camera.circle.fill")
+                        .resizable()
+                        .frame(width: 30, height: 30)
+                        .foregroundColor(.white)
+                        .background(Color.blue.opacity(0.9))
+                        .clipShape(Circle())
+                    
+                    
+                    
                 }
-                .padding()
+                    
+                
+            }
+            
+            .sheet(isPresented: $showCamera) {
+                CameraView(image: $capturedImage)
             }
             .onAppear {
                 CLLocationManager().requestAlwaysAuthorization()
             }
         }
     }
+}
+
+
+
+struct CameraView: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(self)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        picker.allowsEditing = false
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraView
+
+        init(_ parent: CameraView) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let selectedImage = info[.originalImage] as? UIImage {
+                parent.image = selectedImage
+            }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
+
+
+
+
 
 // MARK: - Timer View
 struct TimerView: View {
@@ -287,5 +374,5 @@ struct TimerView: View {
 }
 
 #Preview {
-    ContentView()
+    MapView()
 }
