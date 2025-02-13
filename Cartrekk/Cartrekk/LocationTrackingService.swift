@@ -18,7 +18,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     
     private let locationManager: CLLocationManager
     private let distanceFilter: Double = 10
-    private let timeInterval: TimeInterval = 1
+    private let timeInterval: TimeInterval = 2
     
     init(locationManager: CLLocationManager = CLLocationManager()) {
         self.locationManager = locationManager

@@ -203,7 +203,7 @@ struct MapView: View {
                 .padding()
             }
             .onAppear {
-                CLLocationManager().requestWhenInUseAuthorization()
+                CLLocationManager().requestAlwaysAuthorization()
             }
         }
     }
