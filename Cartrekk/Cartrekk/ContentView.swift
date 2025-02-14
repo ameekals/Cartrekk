@@ -216,6 +216,7 @@ struct MapView: View {
     @State private var timer: Timer? = nil
 
     var body: some View {
+        var UUid: String = authManager.userId!
         VStack {
             Map(position: $cameraPosition) {
                 UserAnnotation()
@@ -226,7 +227,6 @@ struct MapView: View {
                 }
             }
             
-            VStack {
                 VStack {
                     Text(formatTimeInterval(elapsedTime)) // Timer
                         .font(.title2)
@@ -242,7 +242,7 @@ struct MapView: View {
                 Button(action: {
                     if locationService.isTracking {
                         locationService.stopTracking()
-                        route = locationService.saveRoute()
+                        route = locationService.saveRoute(raw_userId: UUid)
                         stopTracking()
                     } else {
                         locationService.startTracking()
@@ -256,7 +256,6 @@ struct MapView: View {
                         .cornerRadius(8)
                 }
             }
-        }
         .onAppear {
             CLLocationManager().requestAlwaysAuthorization()
         }
