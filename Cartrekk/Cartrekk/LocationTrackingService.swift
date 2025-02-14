@@ -30,13 +30,16 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
         locationManager.distanceFilter = distanceFilter
-        //locationManager.allowsBackgroundLocationUpdates = true // Requires background capability
+        
+        locationManager.allowsBackgroundLocationUpdates = true // Requires background capability
         //locationManager.pausesLocationUpdatesAutomatically = false
     }
     
     func startTracking() {
         locations.removeAll()
         isTracking = true
+        locationManager.requestAlwaysAuthorization()
+
         locationManager.startUpdatingLocation()
     }
     
