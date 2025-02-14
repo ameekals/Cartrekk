@@ -12,25 +12,44 @@ import FirebaseAuth
 import Firebase
 import FirebaseFirestore
 import GoogleSignIn
+import Polyline
 
 
 struct ContentView: View {
-    @State private var isLoggedIn = false
+    @StateObject private var authManager = AuthenticationManager()
     @State private var email: String = ""
     @State private var password: String = ""
 
     var body: some View {
-        if isLoggedIn {
+        if authManager.isLoggedIn {
             MainAppView()
+                .environmentObject(authManager) // Inject auth manager to access user ID
         } else {
-            LoginView(isLoggedIn: $isLoggedIn, email: $email, password: $password)
+            LoginView(email: $email, password: $password)
+                .environmentObject(authManager)
+        }
+    }
+}
+
+class AuthenticationManager: ObservableObject {
+    @Published var isLoggedIn: Bool = false
+    @Published var userId: String? = nil
+    
+    init() {
+        // Set up authentication state listener
+        Auth.auth().addStateDidChangeListener { [weak self] _, user in
+            DispatchQueue.main.async {
+                self?.isLoggedIn = user != nil
+                self?.userId = user?.uid
+            }
         }
     }
 }
 
 // MARK: - Login View
+
 struct LoginView: View {
-    @Binding var isLoggedIn: Bool
+    @EnvironmentObject var authManager: AuthenticationManager
     @Binding var email: String
     @Binding var password: String
 
@@ -84,8 +103,6 @@ struct LoginView: View {
         Auth.auth().signIn(withEmail: email, password: password) { result, error in
             if let error = error {
                 print("Login error: \(error.localizedDescription)")
-            } else {
-                isLoggedIn = true
             }
         }
     }
@@ -113,14 +130,13 @@ struct LoginView: View {
             }
 
             let credential = GoogleAuthProvider.credential(withIDToken: idToken,
-                                                           accessToken: user.accessToken.tokenString)
+                                                       accessToken: user.accessToken.tokenString)
 
             Auth.auth().signIn(with: credential) { result, error in
                 if let error = error {
                     print("Firebase authentication error: \(error.localizedDescription)")
-                } else {
-                    isLoggedIn = true
                 }
+                // AuthenticationManager will automatically update state
             }
         }
     }
@@ -128,7 +144,28 @@ struct LoginView: View {
 
 // MARK: - Main App View
 struct MainAppView: View {
+    @EnvironmentObject var authManager: AuthenticationManager
+        
+    func saveDataToFirebase() {
+        guard let userId = authManager.userId else {
+            print("Error: No user ID available")
+            return
+        }
+        
+        // Example of saving data with user ID
+        let db = Firestore.firestore()
+        db.collection("users").document(userId).collection("data").addDocument(data: [
+            "timestamp": Timestamp(),
+            "someData": "Example data"
+        ]) { error in
+            if let error = error {
+                print("Error saving data: \(error.localizedDescription)")
+            }
+        }
+    }
     var body: some View {
+        Text("Welcome! Your user ID is: \(authManager.userId ?? "Not found")")
+        
         NavigationView {
             VStack(spacing: 20) {
                 Text("Cartrekk")
@@ -144,6 +181,19 @@ struct MainAppView: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
+                .padding(.horizontal)
+                
+                NavigationLink(destination: ProfileView()) {
+                    Text("User Profile")
+                        .font(.title2)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
+                
             }
             .padding()
             .navigationBarHidden(true)
@@ -153,10 +203,11 @@ struct MainAppView: View {
 
 // MARK: - Map View with Timer
 struct MapView: View {
-
+    @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var locationService = LocationTrackingService()
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var route: Route?
+
 
     // Timer States
     @State private var isTracking = false
@@ -165,6 +216,7 @@ struct MapView: View {
     @State private var timer: Timer? = nil
 
     var body: some View {
+        var UUid: String = authManager.userId!
         VStack {
             Map(position: $cameraPosition) {
                 UserAnnotation()
@@ -175,7 +227,6 @@ struct MapView: View {
                 }
             }
             
-            VStack {
                 VStack {
                     Text(formatTimeInterval(elapsedTime)) // Timer
                         .font(.title2)
@@ -191,7 +242,7 @@ struct MapView: View {
                 Button(action: {
                     if locationService.isTracking {
                         locationService.stopTracking()
-                        route = locationService.saveRoute()
+                        route = locationService.saveRoute(raw_userId: UUid)
                         stopTracking()
                     } else {
                         locationService.startTracking()
@@ -205,9 +256,8 @@ struct MapView: View {
                         .cornerRadius(8)
                 }
             }
-        }
         .onAppear {
-            CLLocationManager().requestWhenInUseAuthorization()
+            CLLocationManager().requestAlwaysAuthorization()
         }
     }
 
@@ -237,6 +287,122 @@ struct MapView: View {
         let minutes = Int(interval) / 60
         let seconds = Int(interval) % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+}
+
+struct ProfileView: View {
+    @EnvironmentObject var authManager: AuthenticationManager
+    @StateObject private var viewModel = ProfileViewModel()
+    
+    var body: some View {
+        VStack {
+            Text("Profile")
+                .font(.largeTitle)
+                .bold()
+                .padding()
+            
+            List(viewModel.routes, id: \.createdAt) { route in
+                RouteRow(route: route)
+            }
+        }
+        .onAppear {
+            if let userId = authManager.userId {
+                Task {
+                    await viewModel.loadRoutes(userId: userId)
+                }
+            }
+        }
+    }
+}
+
+//
+//// Route row view component
+
+
+struct RouteRow: View {
+    let route: FirestoreManager.fb_Route
+    @State private var region: MKCoordinateRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    )
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(formatDate(route.createdAt))
+                .font(.headline)
+            
+            HStack {
+                Text(String(format: "%.2f m", route.distance))
+                Spacer()
+                Text(formatDuration(route.duration))
+            }
+            .font(.subheadline)
+            .foregroundColor(.gray)
+
+                        
+            // Map view with the route
+            let polyline = Polyline(encodedPolyline: route.polyline)
+            
+            if let locations = polyline.locations, !locations.isEmpty {
+                Map {
+                    Marker( "Start",
+                        coordinate: locations.first!.coordinate)
+                    .tint(.green)
+                            
+                    Marker( "End",
+                        coordinate: locations.last!.coordinate)
+                    .tint(.red)
+                            
+                    
+                    MapPolyline(coordinates: locations.map { $0.coordinate })
+                        .stroke(
+                            Color.blue.opacity(0.8),  // Can change color and opacity
+                            style: StrokeStyle(
+                                lineWidth: 4,         // Can adjust width
+                                lineCap: .butt,      // Options: .round, .butt, .square
+                                lineJoin: .round,     // Options: .round, .miter, .bevel
+                                miterLimit: 10       // Controls how sharp corners appear
+                            )
+                        )
+                }
+                .frame(height: 200)
+                .cornerRadius(10)
+            }
+        }
+        .padding(.vertical, 8)
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    private func formatDuration(_ duration: Double) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = Int(duration) / 60 % 60
+        return String(format: "%02d:%02d", hours, minutes)
+    }
+    
+
+}
+
+// ViewModel to handle data loading and business logic
+class ProfileViewModel: ObservableObject {
+    @Published var routes: [FirestoreManager.fb_Route] = []
+    private let db = FirestoreManager()
+    
+    @MainActor
+    func loadRoutes(userId: String) async {
+        let routes = await withCheckedContinuation { continuation in
+            db.getRoutesForUser(userId: userId) { routes in
+                let sortedRoutes = (routes ?? []).sorted(by: { $0.createdAt > $1.createdAt })
+                continuation.resume(returning: sortedRoutes)
+            }
+        }
+        
+        self.routes = routes
     }
 }
 
