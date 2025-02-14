@@ -74,18 +74,6 @@
             ReferencedContainer = "container:Cartrekk.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "AWS_SECRET_ACCESS_KEY"
-            value = "Faviu60/t/qneZtX6Q2ACGbbmNYw30hxPGSRF5eu"
-            isEnabled = "NO">
-         </EnvironmentVariable>
-         <EnvironmentVariable
-            key = "AWS_ACCESS_KEY_ID"
-            value = "AKIAWCZC5RDKGGUQF2FR"
-            isEnabled = "NO">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
