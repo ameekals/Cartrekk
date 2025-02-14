@@ -13,6 +13,9 @@
 		9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD02D4F0A34009116E6 /* FirebaseAuth */; };
 		9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD22D4F0A34009116E6 /* FirebaseCore */; };
 		9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD42D4F0A34009116E6 /* FirebaseFirestore */; };
+		AEA0BB622D5EAC980077C725 /* AWSS3 in Frameworks */ = {isa = PBXBuildFile; productRef = AEA0BB612D5EAC980077C725 /* AWSS3 */; };
+		AEA0BB642D5EAC980077C725 /* AWSS3Control in Frameworks */ = {isa = PBXBuildFile; productRef = AEA0BB632D5EAC980077C725 /* AWSS3Control */; };
+		AEA0BB662D5EAC980077C725 /* AWSS3Outposts in Frameworks */ = {isa = PBXBuildFile; productRef = AEA0BB652D5EAC980077C725 /* AWSS3Outposts */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,11 +77,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AEA0BB622D5EAC980077C725 /* AWSS3 in Frameworks */,
+				AEA0BB662D5EAC980077C725 /* AWSS3Outposts in Frameworks */,
 				9B4DE6562D59DEDA002FCF8C /* GoogleSignInSwift in Frameworks */,
 				9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */,
 				9B9A03B72D5B355900D58C92 /* Polyline in Frameworks */,
 				9B4DE6542D59DEDA002FCF8C /* GoogleSignIn in Frameworks */,
 				9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */,
+				AEA0BB642D5EAC980077C725 /* AWSS3Control in Frameworks */,
 				9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -154,6 +160,9 @@
 				9B4DE6532D59DEDA002FCF8C /* GoogleSignIn */,
 				9B4DE6552D59DEDA002FCF8C /* GoogleSignInSwift */,
 				9B9A03B62D5B355900D58C92 /* Polyline */,
+				AEA0BB612D5EAC980077C725 /* AWSS3 */,
+				AEA0BB632D5EAC980077C725 /* AWSS3Control */,
+				AEA0BB652D5EAC980077C725 /* AWSS3Outposts */,
 			);
 			productName = Cartrekk;
 			productReference = 9B3090AB2D3B98C700451524 /* Cartrekk.app */;
@@ -241,6 +250,7 @@
 				9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
 				9B4DE6522D59DEDA002FCF8C /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				9B9A03B52D5B355900D58C92 /* XCRemoteSwiftPackageReference "Polyline" */,
+				AEA0BB602D5EAC980077C725 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 9B3090AC2D3B98C700451524 /* Products */;
@@ -459,7 +469,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.Cartrekk";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.Cartrekk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -491,7 +501,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.Cartrekk";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.Cartrekk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -509,7 +519,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkTests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -528,7 +538,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkTests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -545,7 +555,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -562,7 +572,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -658,7 +668,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.Cartrekk";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.Cartrekk;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -676,7 +686,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkTests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -693,7 +703,7 @@
 				DEVELOPMENT_TEAM = DU69WZM376;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = "Ameek-Singh.CartrekkUITests";
+				PRODUCT_BUNDLE_IDENTIFIER = DanielYang.CartrekkUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
@@ -772,6 +782,14 @@
 				minimumVersion = 11.7.0;
 			};
 		};
+		AEA0BB602D5EAC980077C725 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/awslabs/aws-sdk-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.2.18;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -804,6 +822,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		AEA0BB612D5EAC980077C725 /* AWSS3 */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AEA0BB602D5EAC980077C725 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */;
+			productName = AWSS3;
+		};
+		AEA0BB632D5EAC980077C725 /* AWSS3Control */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AEA0BB602D5EAC980077C725 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */;
+			productName = AWSS3Control;
+		};
+		AEA0BB652D5EAC980077C725 /* AWSS3Outposts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AEA0BB602D5EAC980077C725 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */;
+			productName = AWSS3Outposts;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

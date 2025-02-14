@@ -12,6 +12,7 @@ import FirebaseAuth
 import Firebase
 import FirebaseFirestore
 import GoogleSignIn
+import UIKit
 
 
 struct ContentView: View {
@@ -21,6 +22,7 @@ struct ContentView: View {
 
     var body: some View {
         if isLoggedIn {
+            
             MainAppView()
         } else {
             LoginView(isLoggedIn: $isLoggedIn, email: $email, password: $password)
@@ -128,6 +130,7 @@ struct LoginView: View {
 
 // MARK: - Main App View
 struct MainAppView: View {
+    
     var body: some View {
         NavigationView {
             VStack(spacing: 20) {
@@ -157,15 +160,20 @@ struct MapView: View {
     @StateObject private var locationService = LocationTrackingService()
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var route: Route?
-
-    // Timer States
+            // Timer States
     @State private var isTracking = false
     @State private var startTime: Date? = nil
     @State private var elapsedTime: TimeInterval = 0.0
     @State private var timer: Timer? = nil
+    
+    
+    
+    @State private var showCamera = false
+    @State private var capturedImage: UIImage?
 
     var body: some View {
         VStack {
+            
             Map(position: $cameraPosition) {
                 UserAnnotation()
                 
@@ -175,18 +183,21 @@ struct MapView: View {
                 }
             }
             
+            
             VStack {
-                VStack {
-                    Text(formatTimeInterval(elapsedTime)) // Timer
-                        .font(.title2)
-                        .bold()
-                    
+                Text(formatTimeInterval(elapsedTime)) // Timer
+                    .font(.title2)
+                    .bold()
+                
 //                    Text(String(format: "%.2f km", locationService.totalDistance / 1000)) // Distance in km
 //                        .font(.headline)
-                    Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137)) // Distance in miles
-                        .font(.headline)
-                }
-                .padding()
+                Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137)) // Distance in miles
+                    .font(.headline)
+            }
+            .padding()
+            HStack{
+                Spacer()
+                Spacer(minLength: 80)
                 
                 Button(action: {
                     if locationService.isTracking {
@@ -204,8 +215,45 @@ struct MapView: View {
                         .foregroundColor(.white)
                         .cornerRadius(8)
                 }
+                Spacer()
+                Button(action: {
+                    showCamera = true
+                }) {
+                    Image(systemName: "camera.circle.fill")
+                        .resizable()
+                        .frame(width: 30, height: 30)
+                        .foregroundColor(.white)
+                        .background(Color.blue.opacity(0.9))
+                        .clipShape(Circle())
+                    
+                    
+                    
+                }
+                Spacer()
             }
+        
+            
+            
+            
         }
+            
+        
+        .sheet(isPresented: $showCamera, onDismiss: {
+            if let capturedImage = capturedImage {
+                Task {
+                    do {
+                        let imageURL = try await uploadImageToS3(image: capturedImage, imageName: "capturedImage.jpg", bucketName: "cartrekk-images")
+                        print("Image uploaded to S3: \(imageURL)")
+                    } catch {
+                        print("Upload failed: \(error.localizedDescription)")
+                    }
+                }
+            }
+        }) {
+            CameraView(image: $capturedImage)
+        }
+
+        
         .onAppear {
             CLLocationManager().requestWhenInUseAuthorization()
         }
@@ -240,6 +288,51 @@ struct MapView: View {
     }
 }
 
+
+
+
+struct CameraView: UIViewControllerRepresentable {
+    @Binding var image: UIImage?
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(self)
+    }
+
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.sourceType = .camera
+        picker.delegate = context.coordinator
+        picker.allowsEditing = false
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: CameraView
+
+        init(_ parent: CameraView) {
+            self.parent = parent
+        }
+
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let selectedImage = info[.originalImage] as? UIImage {
+                parent.image = selectedImage
+            }
+            picker.dismiss(animated: true)
+        }
+
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            picker.dismiss(animated: true)
+        }
+    }
+}
+
+
+
+
+
+
 #Preview {
-    ContentView()
+    MapView()
 }
