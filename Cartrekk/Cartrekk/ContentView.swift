@@ -393,8 +393,25 @@ struct RouteRow: View {
             
             if let locations = polyline.locations, !locations.isEmpty {
                 Map {
+                    Marker( "Start",
+                        coordinate: locations.first!.coordinate)
+                    .tint(.green)
+                            
+                    Marker( "End",
+                        coordinate: locations.last!.coordinate)
+                    .tint(.red)
+                            
+                    
                     MapPolyline(coordinates: locations.map { $0.coordinate })
-                        .stroke(.blue, lineWidth: 3)
+                        .stroke(
+                            Color.blue.opacity(0.8),  // Can change color and opacity
+                            style: StrokeStyle(
+                                lineWidth: 4,         // Can adjust width
+                                lineCap: .butt,      // Options: .round, .butt, .square
+                                lineJoin: .round,     // Options: .round, .miter, .bevel
+                                miterLimit: 10       // Controls how sharp corners appear
+                            )
+                        )
                 }
                 .frame(height: 200)
                 .cornerRadius(10)
