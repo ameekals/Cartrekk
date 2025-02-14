@@ -37,6 +37,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     func startTracking() {
         locations.removeAll()
         isTracking = true
+        CLLocationManager().requestAlwaysAuthorization()
         locationManager.startUpdatingLocation()
     }
     

@@ -4,7 +4,6 @@
 //
 //  Created by Ameek Singh on 1/18/25.
 //
-
 import SwiftUI
 import MapKit
 import CoreLocation
@@ -15,6 +14,7 @@ import GoogleSignIn
 import UIKit
 import Polyline
 
+// MARK: - Content View
 
 struct ContentView: View {
     @StateObject private var authManager = AuthenticationManager()
@@ -22,16 +22,18 @@ struct ContentView: View {
     @State private var password: String = ""
 
     var body: some View {
-
         if authManager.isLoggedIn {
             MainAppView()
                 .environmentObject(authManager) // Inject auth manager to access user ID
         } else {
             LoginView(email: $email, password: $password)
                 .environmentObject(authManager)
+        
         }
     }
 }
+
+// MARK: - Auth Manager
 
 class AuthenticationManager: ObservableObject {
     @Published var isLoggedIn: Bool = false
@@ -146,28 +148,11 @@ struct LoginView: View {
 
 // MARK: - Main App View
 struct MainAppView: View {
-
     @EnvironmentObject var authManager: AuthenticationManager
-        
-    func saveDataToFirebase() {
-        guard let userId = authManager.userId else {
-            print("Error: No user ID available")
-            return
-        }
-        
-        // Example of saving data with user ID
-        let db = Firestore.firestore()
-        db.collection("users").document(userId).collection("data").addDocument(data: [
-            "timestamp": Timestamp(),
-            "someData": "Example data"
-        ]) { error in
-            if let error = error {
-                print("Error saving data: \(error.localizedDescription)")
-            }
-        }
-    }
+    
     var body: some View {
         Text("Welcome! Your user ID is: \(authManager.userId ?? "Not found")")
+        
         
         NavigationView {
             VStack(spacing: 20) {
@@ -197,14 +182,33 @@ struct MainAppView: View {
                 }
                 .padding(.horizontal)
                 
-            }
-            .padding()
-            .navigationBarHidden(true)
-        }
-    }
+                Button(action: {
+                    do {
+                        try Auth.auth().signOut()
+                        authManager.isLoggedIn = false
+                        authManager.userId = nil
+                    } catch {
+                        print("Error signing out: \(error.localizedDescription)")
+                    }
+                }) {
+                    Text("Log Out")
+                        .font(.subheadline)  // Changed from .title2 to .subheadline
+                        .padding(.vertical, 8)  // Reduced vertical padding
+                        .padding(.horizontal, 20)  // Added horizontal padding
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)  // Slightly reduced corner radius
+                }
+                .padding(.top, 20)
+               
+           }
+           .padding()
+           .navigationBarHidden(true)
+       }
+   }
 }
 
-// MARK: - Map View with Timer
+// MARK: - Map View
 struct MapView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var locationService = LocationTrackingService()
@@ -223,9 +227,8 @@ struct MapView: View {
     @State private var capturedImage: UIImage?
 
     var body: some View {
-        var UUid: String = authManager.userId!
+        let UUid: String = authManager.userId!
         VStack {
-            
             Map(position: $cameraPosition) {
                 UserAnnotation()
                 
@@ -235,19 +238,15 @@ struct MapView: View {
                 }
             }
             
-            
             VStack {
                 Text(formatTimeInterval(elapsedTime)) // Timer
                     .font(.title2)
                     .bold()
-                
-   
-//                    Text(String(format: "%.2f km", locationService.totalDistance / 1000)) // Distance in km
-//                        .font(.headline)
                 Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137)) // Distance in miles
                     .font(.headline)
             }
             .padding()
+            
             HStack{
                 Spacer()
                 Spacer(minLength: 80)
@@ -259,6 +258,7 @@ struct MapView: View {
                         stopTracking()
                     } else {
                         locationService.startTracking()
+                        CLLocationManager().requestAlwaysAuthorization()
                         startTracking()
                     }
                 }) {
@@ -278,19 +278,12 @@ struct MapView: View {
                         .foregroundColor(.white)
                         .background(Color.blue.opacity(0.9))
                         .clipShape(Circle())
-                    
-                    
-                    
                 }
                 Spacer()
             }
-        
-            
-            
-            
+    
         }
-            
-        
+
         .sheet(isPresented: $showCamera, onDismiss: {
             if let capturedImage = capturedImage {
                 Task {
@@ -308,11 +301,10 @@ struct MapView: View {
 
 
         .onAppear {
-            CLLocationManager().requestAlwaysAuthorization()
+            CLLocationManager().requestWhenInUseAuthorization()
         }
     }
 
-    // MARK: - Timer and Tracking Logic
     private func startTracking() {
         isTracking = true
         locationService.startTracking()
@@ -342,7 +334,7 @@ struct MapView: View {
 }
 
 
-
+// MARK: - Camera View
 
 struct CameraView: UIViewControllerRepresentable {
     @Binding var image: UIImage?
@@ -384,7 +376,7 @@ struct CameraView: UIViewControllerRepresentable {
 
 
 
-
+// MARK: - Profile View
 
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
@@ -411,9 +403,8 @@ struct ProfileView: View {
     }
 }
 
-//
-//// Route row view component
 
+// MARK: - Route Row
 
 struct RouteRow: View {
     let route: FirestoreManager.fb_Route
@@ -484,7 +475,7 @@ struct RouteRow: View {
 
 }
 
-// ViewModel to handle data loading and business logic
+// MARK: - Profile View Model
 class ProfileViewModel: ObservableObject {
     @Published var routes: [FirestoreManager.fb_Route] = []
     private let db = FirestoreManager()
