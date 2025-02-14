@@ -46,6 +46,42 @@ class FirestoreManager{
         }
     }
     
+    func getRoutesForUser(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
+        let routesRef = db.collection("routes")
+        
+        routesRef.whereField("userid", isEqualTo: userId).getDocuments(source: .default) { (snapshot, error) in
+            if let error = error {
+                print("Error fetching routes: \(error)")
+                completion(nil)
+                return
+            }
+            
+            guard let documents = snapshot?.documents else {
+                print("No routes found for user: \(userId)")
+                completion(nil)
+                return
+            }
+            
+            // Parse documents into Route models
+            let routes: [fb_Route] = documents.compactMap { document in
+                let data = document.data()
+                return fb_Route(
+                    createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                    distance: data["distance"] as? Double ?? 0.0,
+                    duration: data["duration"] as? Double ?? 0.0,
+                    likes: data["likes"] as? Int ?? 0,
+                    polyline: data["polyline"] as? String ?? "",
+                    isPublic: data["public"] as? Bool ?? false,
+                    routeImages: data["routeImages"] as? [String] ?? [],
+                    userId: data["userid"] as? String ?? ""
+                )
+            }
+            
+            completion(routes)
+        }
+    }
+    
+    
     
     // 🔹 Function to save route details
     func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String) {
@@ -82,6 +118,7 @@ class FirestoreManager{
         let userId: String
     }
     
+
 }
 
 
