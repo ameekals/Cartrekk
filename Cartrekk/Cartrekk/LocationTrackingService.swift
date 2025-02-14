@@ -68,7 +68,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     }
     
     // MARK: - Route Data Management
-    func saveRoute(raw_userId: String) -> Route {
+    func saveRoute(raw_userId: String, time: TimeInterval) -> Route {
         let route = Route(
             id: UUID(),
             date: Date(),
@@ -81,8 +81,8 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
             }
         )
         let routeId = route.id.uuidString
-        let distance = totalDistance
-        let duration = 70.0
+        let distance = totalDistance * 0.00062137
+        let duration = time
         let likes = 0
         let polyline = Polyline(locations: locations)
         let encodedPolyline: String = polyline.encodedPolyline
@@ -99,17 +99,6 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
                          isPublic: isPublic,
                          routeImages: routeImages,
                          userId: userId)
-        FirestoreManager.shared.getRoutesForUser(userId: "preet") { documents in
-            if let documents = documents {
-                for document in documents {
-                    let data = document
-                    //print("""Route ID: (document.documentID), Distance: (data["distance"] ?? "N/A")")
-                    print(data)
-                }
-            } else {
-                print("No routes found for this user.")
-            }
-        }
         return route
     }
 }

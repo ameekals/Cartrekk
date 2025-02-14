@@ -255,7 +255,7 @@ struct MapView: View {
                 Button(action: {
                     if locationService.isTracking {
                         locationService.stopTracking()
-                        route = locationService.saveRoute(raw_userId: UUid)
+                        route = locationService.saveRoute(raw_userId: UUid, time: elapsedTime)
                         stopTracking()
                     } else {
                         locationService.startTracking()
@@ -477,10 +477,10 @@ struct RouteRow: View {
     
     private func formatDuration(_ duration: Double) -> String {
         let hours = Int(duration) / 3600
-        let minutes = Int(duration) / 60 % 60
-        return String(format: "%02d:%02d", hours, minutes)
+        let minutes = (Int(duration) % 3600) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
-    
 
 }
 
