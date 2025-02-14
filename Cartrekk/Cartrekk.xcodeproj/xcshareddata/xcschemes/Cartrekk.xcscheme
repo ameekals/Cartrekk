@@ -78,12 +78,12 @@
          <EnvironmentVariable
             key = "AWS_SECRET_ACCESS_KEY"
             value = "Faviu60/t/qneZtX6Q2ACGbbmNYw30hxPGSRF5eu"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </EnvironmentVariable>
          <EnvironmentVariable
             key = "AWS_ACCESS_KEY_ID"
             value = "AKIAWCZC5RDKGGUQF2FR"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </EnvironmentVariable>
       </EnvironmentVariables>
    </LaunchAction>
