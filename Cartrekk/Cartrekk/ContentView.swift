@@ -503,5 +503,5 @@ class ProfileViewModel: ObservableObject {
 }
 
 #Preview {
-    MapView()
+    ContentView()
 }
