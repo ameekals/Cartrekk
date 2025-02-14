@@ -12,6 +12,7 @@ import FirebaseAuth
 import Firebase
 import FirebaseFirestore
 import GoogleSignIn
+import Polyline
 
 
 struct ContentView: View {
@@ -342,7 +343,6 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     
     var body: some View {
-        var preet: String? = "preet"
         VStack {
             Text("Profile")
                 .font(.largeTitle)
@@ -350,15 +350,11 @@ struct ProfileView: View {
                 .padding()
             
             List(viewModel.routes, id: \.createdAt) { route in
-                VStack(alignment: .leading) {
-                    Text("Distance: \(String(format: "%.2f km", route.distance))")
-                    Text("Duration: \(String(format: "%.0f min", route.duration/60))")
-                    Text("Date: \(route.createdAt.formatted())")  // No if let needed
-                }
+                RouteRow(route: route)
             }
         }
         .onAppear {
-            if let userId = preet {
+            if let userId = authManager.userId {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
                 }
@@ -367,23 +363,42 @@ struct ProfileView: View {
     }
 }
 
+//
+//// Route row view component
 
-// Route row view component
+
 struct RouteRow: View {
     let route: FirestoreManager.fb_Route
-    
+    @State private var region: MKCoordinateRegion = MKCoordinateRegion(
+        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
+        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
+    )
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(formatDate(route.createdAt))
                 .font(.headline)
             
             HStack {
-                Text(String(format: "%.2f km", route.distance))
+                Text(String(format: "%.2f m", route.distance))
                 Spacer()
                 Text(formatDuration(route.duration))
             }
             .font(.subheadline)
             .foregroundColor(.gray)
+
+                        
+            // Map view with the route
+            let polyline = Polyline(encodedPolyline: route.polyline)
+            
+            if let locations = polyline.locations, !locations.isEmpty {
+                Map {
+                    MapPolyline(coordinates: locations.map { $0.coordinate })
+                        .stroke(.blue, lineWidth: 3)
+                }
+                .frame(height: 200)
+                .cornerRadius(10)
+            }
         }
         .padding(.vertical, 8)
     }
@@ -400,6 +415,8 @@ struct RouteRow: View {
         let minutes = Int(duration) / 60 % 60
         return String(format: "%02d:%02d", hours, minutes)
     }
+    
+
 }
 
 // ViewModel to handle data loading and business logic
@@ -409,10 +426,10 @@ class ProfileViewModel: ObservableObject {
     
     @MainActor
     func loadRoutes(userId: String) async {
-        // Create a continuation to bridge the callback-based API
         let routes = await withCheckedContinuation { continuation in
             db.getRoutesForUser(userId: userId) { routes in
-                continuation.resume(returning: routes ?? [])
+                let sortedRoutes = (routes ?? []).sorted(by: { $0.createdAt > $1.createdAt })
+                continuation.resume(returning: sortedRoutes)
             }
         }
         
