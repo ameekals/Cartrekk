@@ -39,7 +39,6 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
         locations.removeAll()
         isTracking = true
         locationManager.requestAlwaysAuthorization()
-
         locationManager.startUpdatingLocation()
     }
     
