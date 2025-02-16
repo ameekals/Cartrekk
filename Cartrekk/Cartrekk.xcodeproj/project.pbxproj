@@ -458,6 +458,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Open Camera";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "background tracking";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -493,6 +494,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Open Camera";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "background tracking";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -663,6 +665,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Open Camera";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "background tracking";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "We need your location to show it on the map.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
