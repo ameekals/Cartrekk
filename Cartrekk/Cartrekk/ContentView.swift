@@ -230,6 +230,7 @@ struct MapView: View {
         let UUid: String = authManager.userId!
         VStack {
             Map(position: $cameraPosition) {
+                
                 UserAnnotation()
                 
                 if !locationService.locations.isEmpty {
@@ -283,7 +284,11 @@ struct MapView: View {
             }
     
         }
-
+            
+        .onAppear {
+            CLLocationManager().requestWhenInUseAuthorization()
+            CLLocationManager().requestAlwaysAuthorization()
+        }
         .sheet(isPresented: $showCamera, onDismiss: {
             if let capturedImage = capturedImage {
                 Task {
@@ -299,10 +304,6 @@ struct MapView: View {
             CameraView(image: $capturedImage)
         }
 
-
-        .onAppear {
-            CLLocationManager().requestWhenInUseAuthorization()
-        }
     }
 
     private func startTracking() {

@@ -13,6 +13,8 @@
 	</array>
 	<key>GIDClientID</key>
 	<string>1044130592051-ap2dvmsd82mc7bc8q76ls9gu18vfvaqn.apps.googleusercontent.com</string>
+	<key>MKDirectionsApplicationSupportedModes</key>
+	<array/>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
