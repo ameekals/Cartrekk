@@ -1,5 +1,6 @@
 import SwiftUI
 import MapKit
+import Polyline
 
 struct PostView: View {
     @ObservedObject var viewModel: ExploreViewModel
@@ -19,7 +20,7 @@ struct PostView: View {
         VStack(alignment: .leading, spacing: 12) {
             // Swipeable image carousel
             TabView {
-                RoutePreviewMap(route: post.route)
+                RoutePreviewMap(post: post)
                     .frame(height: 250)
                     .clipShape(RoundedRectangle(cornerRadius: 10))
 
@@ -61,7 +62,7 @@ struct PostView: View {
             .padding(.horizontal)
 
             // View All Comments Button
-            if post.comments.count > 2 {
+            if post.comments.count > 0 {
                 Button("View all comments") {
                     showCommentsSheet = true
                 }
@@ -98,15 +99,17 @@ struct CommentsSheet: View {
     var post: Post
     @ObservedObject var viewModel: ExploreViewModel
     @Binding var showCommentsSheet: Bool
-
+    
     var body: some View {
         NavigationView {
             List {
                 ForEach(post.comments) { comment in
-                    VStack(alignment: .leading) {
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(comment.username)
                             .fontWeight(.bold)
                         Text(comment.text)
+                        Text(comment.timestamp, style: .relative)
+                            .foregroundColor(.gray)
                     }
                     .font(.caption)
                 }
@@ -117,30 +120,49 @@ struct CommentsSheet: View {
                     showCommentsSheet = false
                 }
             }
+            /*
+            .task {
+                // Reload comments when sheet appears
+                await viewModel.loadCommentsForPost(post: post)
+            } */
         }
     }
 }
-
 // MARK: - Route Map Preview (Locked)
 struct RoutePreviewMap: View {
-    var route: Route
-
+    var post: Post
+    
     var body: some View {
         ZStack {
-            Map {
-                let coordinates = route.coordinates.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
-                if !coordinates.isEmpty {
-                    MapPolyline(coordinates: coordinates)
-                        .stroke(.blue, lineWidth: 3)
-                }
-            }
-            .disabled(true)
-            .allowsHitTesting(false)
+            let polyline = Polyline(encodedPolyline: post.polyline)
             
-            Rectangle()
-                .foregroundColor(.clear)
+            if let locations = polyline.locations, !locations.isEmpty {
+                Map {
+                    Marker("Start",
+                           coordinate: locations.first!.coordinate)
+                    .tint(.green)
+                    
+                    Marker("End",
+                           coordinate: locations.last!.coordinate)
+                    .tint(.red)
+                    
+                    MapPolyline(coordinates: locations.map { $0.coordinate })
+                        .stroke(
+                            Color.blue.opacity(0.8),
+                            style: StrokeStyle(
+                                lineWidth: 4,
+                                lineCap: .butt,
+                                lineJoin: .round,
+                                miterLimit: 10
+                            )
+                        )
+                }
+                .disabled(true)
+                .allowsHitTesting(false)
+                .frame(height: 250)
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+            }
+            
         }
-        .frame(height: 250)
-        .clipShape(RoundedRectangle(cornerRadius: 10))
     }
 }

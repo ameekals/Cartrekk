@@ -14,6 +14,7 @@ struct Post: Identifiable {
     var photos: [String]
     var likes: Int
     var comments: [Comment]
+    var polyline: String
 }
 
 struct Route: Identifiable, Codable {

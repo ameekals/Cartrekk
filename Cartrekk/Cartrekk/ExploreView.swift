@@ -20,6 +20,9 @@ struct ExploreView: View {
                     }
                 }
                 .navigationBarTitle("Explore")
+                .task {
+                    await viewModel.loadPublicPosts()
+                }
             }
         }
 }

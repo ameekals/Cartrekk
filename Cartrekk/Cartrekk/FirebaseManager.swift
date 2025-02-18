@@ -89,6 +89,109 @@ class FirestoreManager{
         }
     }
     
+    func getPublicRoutes(completion: @escaping ([fb_Route]?) -> Void) {
+        let routesRef = db.collection("routes")
+        
+        routesRef.whereField("public", isEqualTo: true).getDocuments(source: .default) { (snapshot, error) in
+            if let error = error {
+                print("Error fetching public routes: \(error)")
+                completion(nil)
+                return
+            }
+            
+            guard let documents = snapshot?.documents else {
+                print("No public routes found")
+                completion(nil)
+                return
+            }
+            
+            // Parse documents into Route models
+            let routes: [fb_Route] = documents.compactMap { document in
+                let data = document.data()
+                return fb_Route(
+                    docID: document.documentID,
+                    createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                    distance: data["distance"] as? Double ?? 0.0,
+                    duration: data["duration"] as? Double ?? 0.0,
+                    likes: data["likes"] as? Int ?? 0,
+                    polyline: data["polyline"] as? String ?? "",
+                    isPublic: data["public"] as? Bool ?? false,
+                    routeImages: data["routeImages"] as? [String] ?? [],
+                    userId: data["userid"] as? String ?? ""
+                )
+            }
+            
+            completion(routes)
+        }
+    }
+    
+    func getCommentsForRoute(routeId: String, completion: @escaping ([Comment]?) -> Void) {
+        let commentsRef = db.collection("routes").document(routeId).collection("comments")
+        
+        commentsRef.order(by: "createdAt", descending: true).getDocuments { (snapshot, error) in
+            if let error = error {
+                print("Error fetching comments: \(error)")
+                completion(nil)
+                return
+            }
+            
+            guard let documents = snapshot?.documents else {
+                print("No comments found for route: \(routeId)")
+                completion(nil)
+                return
+            }
+            
+            // First, get all comments with their userIds
+            let comments = documents.compactMap { document -> (Comment)? in
+                let data = document.data()
+                let userId = data["userid"] as? String ?? ""
+                
+                return Comment(
+                    id: document.documentID,
+                    userId: userId,
+                    username: "", // We'll fill this in after getting user data
+                    text: data["text"] as? String ?? "",
+                    timestamp: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                )//, userId)
+            }
+            print(comments)
+            completion(comments)
+        }
+        /*
+         // Get unique userIds
+         let userIds = Set(comments.map { $0.1 })
+         
+         // Fetch usernames for all userIds
+         let usersRef = self.db.collection("users")
+         var usernames: [String: String] = [:]
+         let group = DispatchGroup()
+         
+         for userId in userIds {
+         group.enter()
+         usersRef.document(userId).getDocument { (document, error) in
+         if let document = document, document.exists {
+         usernames[userId] = document.data()?["username"] as? String ?? "Unknown User"
+         }
+         group.leave()
+         }
+         }
+         
+         group.notify(queue: .main) {
+         // Create final comments array with usernames
+         let finalComments = comments.map { comment, userId in
+         Comment(
+         id: comment.id,
+         userId: comment.userId,
+         username: usernames[userId] ?? "Unknown User",
+         text: comment.text,
+         timestamp: comment.timestamp
+         )
+         }
+         */
+        
+    }
+    
+    
     struct fb_Route {
         let docID: String
         let createdAt: Date
