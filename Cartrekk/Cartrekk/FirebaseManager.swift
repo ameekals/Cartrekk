@@ -75,6 +75,20 @@ class FirestoreManager{
         }
     }
     
+    func deleteRoute(routeId: String, completion: @escaping (Bool) -> Void) {
+        let routeRef = db.collection("routes").document(routeId)
+        
+        routeRef.delete { error in
+            if let error = error {
+                print("Error deleting route: \(error)")
+                completion(false)
+            } else {
+                print("Route successfully deleted!")
+                completion(true)
+            }
+        }
+    }
+    
     struct fb_Route {
         let docID: String
         let createdAt: Date

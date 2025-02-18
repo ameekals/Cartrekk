@@ -231,13 +231,12 @@ class TrackingStateManager: ObservableObject {
         }
     }
     
-    func stopTracking(userId: String) -> Route? {
+    func stopTracking(userId: String) {
         isTracking = false
         timer?.invalidate()
         timer = nil
+        locationService.saveRoute(raw_userId: userId, time: elapsedTime)
         elapsedTime = 0.0
-        locationService.stopTracking()
-        return locationService.saveRoute(raw_userId: userId, time: elapsedTime)
     }
 }
 
@@ -280,7 +279,10 @@ struct MapView: View {
                 
                 Button(action: {
                     if trackingManager.isTracking {
-                        route = trackingManager.stopTracking(userId: UUid)
+                        trackingManager.stopTracking(userId: UUid)
+                        locationService.stopTracking()
+                        
+
                     } else {
                         CLLocationManager().requestAlwaysAuthorization()
                         trackingManager.startTracking()
@@ -396,8 +398,16 @@ struct ProfileView: View {
                 .padding()
             
             List(viewModel.routes, id: \.docID) { route in
-                RouteRow(route: route){
-                    print("we need to actually delete")
+                RouteRow(route: route) {
+                    // Handle actual deletion
+                    Task {
+                        if await viewModel.deleteRoute(routeId: route.docID) {
+                            // If deletion was successful, reload the routes
+                            if let userId = authManager.userId {
+                                await viewModel.loadRoutes(userId: userId)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -522,6 +532,15 @@ class ProfileViewModel: ObservableObject {
         }
         
         self.routes = routes
+    }
+    // Add this function to handle route deletion
+    @MainActor
+    func deleteRoute(routeId: String) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            db.deleteRoute(routeId: routeId) { success in
+                continuation.resume(returning: success)
+            }
+        }
     }
 }
 
