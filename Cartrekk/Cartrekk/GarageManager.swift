@@ -12,6 +12,7 @@ import FirebaseAuth
 class GarageManager: ObservableObject {
     static let shared = GarageManager() // Singleton instance
 
+    // Can input test values for now
     @Published var totalMiles: Double = 0.0
     @Published var usableMiles: Double = 0.0
     @Published var unlockedCars: [String] = [] // Unlocked cars
