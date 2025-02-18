@@ -70,6 +70,11 @@
 			path = CartrekkUITests;
 			sourceTree = "<group>";
 		};
+		9BAEEFA22D64252600469F4E /* CarModels */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CarModels;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,6 +114,7 @@
 		9B3090A22D3B98C700451524 = {
 			isa = PBXGroup;
 			children = (
+				9BAEEFA22D64252600469F4E /* CarModels */,
 				9B3090AD2D3B98C700451524 /* Cartrekk */,
 				9B3090BE2D3B98C900451524 /* CartrekkTests */,
 				9B3090C82D3B98C900451524 /* CartrekkUITests */,
@@ -151,6 +157,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				9B3090AD2D3B98C700451524 /* Cartrekk */,
+				9BAEEFA22D64252600469F4E /* CarModels */,
 			);
 			name = Cartrekk;
 			packageProductDependencies = (

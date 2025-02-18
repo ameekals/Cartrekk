@@ -191,6 +191,16 @@ struct MainAppView: View {
                         .cornerRadius(10)
                 }
                 .padding(.horizontal)
+                NavigationLink(destination: GarageView()) {
+                    Text("Garage")
+                        .font(.title2)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
                 
                 Button(action: {
                     do {
