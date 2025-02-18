@@ -13,39 +13,6 @@ class FirestoreManager{
     static let shared = FirestoreManager()
     private let db = Firestore.firestore()
     
-    func getRouteDetails(routeId: String, completion: @escaping (fb_Route?) -> Void) {
-        let routeRef = db.collection("routes").document(routeId)
-
-        routeRef.getDocument { document, error in
-            if let error = error {
-                print("Error getting route: \(error)")
-                completion(nil)
-                return
-            }
-
-            if let document = document, document.exists,
-               let data = document.data() {
-
-                let route = fb_Route(
-                    createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
-                    distance: data["distance"] as? Double ?? 0.0,
-                    duration: data["duration"] as? Double ?? 0.0,
-                    likes: data["likes"] as? Int ?? 0,
-                    polyline: data["polyline"] as? String ?? "",
-                    isPublic: data["public"] as? Bool ?? false,
-                    routeImages: data["routeImages"] as? [String] ?? nil,
-                    userId: data["userid"] as? String ?? ""
-                )
-
-                print("Fetched Route: \(route)")
-                completion(route)
-            } else {
-                print("Document does not exist.")
-                completion(nil)
-            }
-        }
-    }
-    
     func getRoutesForUser(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
         let routesRef = db.collection("routes")
         
@@ -66,6 +33,7 @@ class FirestoreManager{
             let routes: [fb_Route] = documents.compactMap { document in
                 let data = document.data()
                 return fb_Route(
+                    docID: document.documentID,
                     createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
                     distance: data["distance"] as? Double ?? 0.0,
                     duration: data["duration"] as? Double ?? 0.0,
@@ -107,7 +75,22 @@ class FirestoreManager{
         }
     }
     
+    func deleteRoute(routeId: String, completion: @escaping (Bool) -> Void) {
+        let routeRef = db.collection("routes").document(routeId)
+        
+        routeRef.delete { error in
+            if let error = error {
+                print("Error deleting route: \(error)")
+                completion(false)
+            } else {
+                print("Route successfully deleted!")
+                completion(true)
+            }
+        }
+    }
+    
     struct fb_Route {
+        let docID: String
         let createdAt: Date
         let distance: Double
         let duration: Double

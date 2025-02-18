@@ -218,29 +218,54 @@ struct MainAppView: View {
    }
 }
 
+class TrackingStateManager: ObservableObject {
+    static let shared = TrackingStateManager()
+    let locationService = LocationTrackingService.shared
+    
+    @Published var isTracking = false
+    @Published var startTime: Date?
+    @Published var elapsedTime: TimeInterval = 0.0
+    private var timer: Timer?
+    
+    private init() {}
+    
+    func startTracking() {
+        isTracking = true
+        locationService.startTracking()
+        startTime = Date()
+        elapsedTime = 0.0
+        
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self, let startTime = self.startTime else { return }
+            self.elapsedTime = Date().timeIntervalSince(startTime)
+        }
+    }
+    
+    func stopTracking(userId: String) {
+        isTracking = false
+        timer?.invalidate()
+        timer = nil
+        locationService.saveRoute(raw_userId: userId, time: elapsedTime)
+        elapsedTime = 0.0
+    }
+}
+
+
 // MARK: - Map View
+// Modified MapView
 struct MapView: View {
     @EnvironmentObject var authManager: AuthenticationManager
-    @StateObject private var locationService = LocationTrackingService()
+    @StateObject private var locationService = LocationTrackingService.shared
+    @StateObject private var trackingManager = TrackingStateManager.shared
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var route: Route?
-    // Timer States
-
-    @State private var isTracking = false
-    @State private var startTime: Date? = nil
-    @State private var elapsedTime: TimeInterval = 0.0
-    @State private var timer: Timer? = nil
-    
-    
-    
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
-
+    
     var body: some View {
         let UUid: String = authManager.userId!
         VStack {
             Map(position: $cameraPosition) {
-                
                 UserAnnotation()
                 
                 if !locationService.locations.isEmpty {
@@ -250,35 +275,36 @@ struct MapView: View {
             }
             
             VStack {
-                Text(formatTimeInterval(elapsedTime)) // Timer
+                Text(formatTimeInterval(trackingManager.elapsedTime))
                     .font(.title2)
                     .bold()
-                Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137)) // Distance in miles
+                Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137))
                     .font(.headline)
             }
             .padding()
             
-            HStack{
+            HStack {
                 Spacer()
                 Spacer(minLength: 80)
                 
                 Button(action: {
-                    if locationService.isTracking {
+                    if trackingManager.isTracking {
+                        trackingManager.stopTracking(userId: UUid)
                         locationService.stopTracking()
-                        route = locationService.saveRoute(raw_userId: UUid, time: elapsedTime)
-                        stopTracking()
+                        
+
                     } else {
-                        locationService.startTracking()
                         CLLocationManager().requestAlwaysAuthorization()
-                        startTracking()
+                        trackingManager.startTracking()
                     }
                 }) {
-                    Text(locationService.isTracking ? "Stop Tracking" : "Start Tracking")
+                    Text(trackingManager.isTracking ? "Stop Tracking" : "Start Tracking")
                         .padding()
-                        .background(locationService.isTracking ? Color.red : Color.green)
+                        .background(trackingManager.isTracking ? Color.red : Color.green)
                         .foregroundColor(.white)
                         .cornerRadius(8)
                 }
+                
                 Spacer()
                 Button(action: {
                     showCamera = true
@@ -292,53 +318,34 @@ struct MapView: View {
                 }
                 Spacer()
             }
-    
         }
-            
         .onAppear {
             CLLocationManager().requestWhenInUseAuthorization()
             CLLocationManager().requestAlwaysAuthorization()
         }
-        .sheet(isPresented: $showCamera, onDismiss: {
-            if let capturedImage = capturedImage {
-                Task {
-                    do {
-                        let imageURL = try await uploadImageToS3(image: capturedImage, imageName: "capturedImage.jpg", bucketName: "cartrekk-images")
-                        print("Image uploaded to S3: \(imageURL)")
-                    } catch {
-                        print("Upload failed: \(error.localizedDescription)")
-                    }
-                }
-            }
-        }) {
+        .sheet(isPresented: $showCamera, onDismiss: handleCameraDismiss){
             CameraView(image: $capturedImage)
         }
-
     }
-
-    private func startTracking() {
-        isTracking = true
-        locationService.startTracking()
-        startTime = Date()
-        elapsedTime = 0.0
-
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            if let startTime = startTime {
-                elapsedTime = Date().timeIntervalSince(startTime)
+    
+    private func handleCameraDismiss() {
+        if let capturedImage = capturedImage {
+            Task {
+                do {
+                    let imageURL = try await uploadImageToS3(image: capturedImage,
+                                                           imageName: "capturedImage.jpg",
+                                                           bucketName: "cartrekk-images")
+                    print("Image uploaded to S3: \(imageURL)")
+                } catch {
+                    print("Upload failed: \(error.localizedDescription)")
+                }
             }
         }
     }
-
-    private func stopTracking() {
-        isTracking = false
-        locationService.stopTracking()
-        timer?.invalidate()
-        timer = nil
-    }
-
+    
     private func formatTimeInterval(_ interval: TimeInterval) -> String {
         let hours = Int(interval) / 3600
-        let minutes = Int(interval) / 60
+        let minutes = Int(interval) / 60 % 60
         let seconds = Int(interval) % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
@@ -400,8 +407,18 @@ struct ProfileView: View {
                 .bold()
                 .padding()
             
-            List(viewModel.routes, id: \.createdAt) { route in
-                RouteRow(route: route)
+            List(viewModel.routes, id: \.docID) { route in
+                RouteRow(route: route) {
+                    // Handle actual deletion
+                    Task {
+                        if await viewModel.deleteRoute(routeId: route.docID) {
+                            // If deletion was successful, reload the routes
+                            if let userId = authManager.userId {
+                                await viewModel.loadRoutes(userId: userId)
+                            }
+                        }
+                    }
+                }
             }
         }
         .onAppear {
@@ -416,19 +433,45 @@ struct ProfileView: View {
 
 
 // MARK: - Route Row
-
 struct RouteRow: View {
     let route: FirestoreManager.fb_Route
-    @State private var region: MKCoordinateRegion = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 0, longitude: 0),
-        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-    )
-
+    @State private var showDeleteConfirmation = false
+    var onDelete: () -> Void
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(formatDate(route.createdAt))
-                .font(.headline)
+            // Separate HStack for the header with delete button
+            HStack {
+                VStack(alignment: .leading) {
+                    Text(formatDate(route.createdAt))
+                        .font(.headline)
+                }
+                
+                Spacer()
             
+                // Isolated delete button
+                Button(action: {
+                    showDeleteConfirmation = true
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+                .buttonStyle(.borderless)
+                .confirmationDialog(
+                    "Delete Route",
+                    isPresented: $showDeleteConfirmation,
+                    titleVisibility: .visible
+                ) {
+                    Button("Delete", role: .destructive) {
+                        onDelete()
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("Are you sure you want to delete this route? This action cannot be undone.")
+                }
+            }
+            
+            // Rest of the route information
             HStack {
                 Text(String(format: "%.2f m", route.distance))
                 Spacer()
@@ -436,30 +479,28 @@ struct RouteRow: View {
             }
             .font(.subheadline)
             .foregroundColor(.gray)
-
-                        
+            
             // Map view with the route
             let polyline = Polyline(encodedPolyline: route.polyline)
             
             if let locations = polyline.locations, !locations.isEmpty {
                 Map {
-                    Marker( "Start",
+                    Marker("Start",
                         coordinate: locations.first!.coordinate)
                     .tint(.green)
-                            
-                    Marker( "End",
+                    
+                    Marker("End",
                         coordinate: locations.last!.coordinate)
                     .tint(.red)
-                            
                     
                     MapPolyline(coordinates: locations.map { $0.coordinate })
                         .stroke(
-                            Color.blue.opacity(0.8),  // Can change color and opacity
+                            Color.blue.opacity(0.8),
                             style: StrokeStyle(
-                                lineWidth: 4,         // Can adjust width
-                                lineCap: .butt,      // Options: .round, .butt, .square
-                                lineJoin: .round,     // Options: .round, .miter, .bevel
-                                miterLimit: 10       // Controls how sharp corners appear
+                                lineWidth: 4,
+                                lineCap: .butt,
+                                lineJoin: .round,
+                                miterLimit: 10
                             )
                         )
                 }
@@ -470,6 +511,7 @@ struct RouteRow: View {
         .padding(.vertical, 8)
     }
     
+    // Keep your existing helper functions
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
@@ -483,7 +525,6 @@ struct RouteRow: View {
         let seconds = Int(duration) % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
-
 }
 
 // MARK: - Profile View Model
@@ -501,6 +542,15 @@ class ProfileViewModel: ObservableObject {
         }
         
         self.routes = routes
+    }
+    // Add this function to handle route deletion
+    @MainActor
+    func deleteRoute(routeId: String) async -> Bool {
+        return await withCheckedContinuation { continuation in
+            db.deleteRoute(routeId: routeId) { success in
+                continuation.resume(returning: success)
+            }
+        }
     }
 }
 

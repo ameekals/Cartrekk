@@ -12,6 +12,7 @@ import SwiftUI
 import Polyline
 
 class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDelegate {
+    static let shared = LocationTrackingService()
     @Published var locations: [CLLocation] = []
     @Published var isTracking = false
     @Published var totalDistance = 0.0
@@ -44,6 +45,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     
     func stopTracking() {
         isTracking = false
+        totalDistance = 0.0
         locationManager.stopUpdatingLocation()
     }
     
