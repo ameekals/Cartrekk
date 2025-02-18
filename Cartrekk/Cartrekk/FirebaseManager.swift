@@ -11,7 +11,7 @@ import FirebaseCore
 
 class FirestoreManager{
     static let shared = FirestoreManager()
-    private let db = Firestore.firestore()
+    let db = Firestore.firestore()
     
     func getRoutesForUser(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
         let routesRef = db.collection("routes")
