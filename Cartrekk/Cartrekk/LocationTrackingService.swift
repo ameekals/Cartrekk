@@ -106,32 +106,4 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
 }
 
 // MARK: - Data Models
-struct Route: Identifiable, Codable {
-    let id: UUID
-    let date: Date
-    let coordinates: [RouteCoordinate]
-    
-    var distance: Double {
-        guard coordinates.count > 1 else { return 0 }
-        
-        var totalDistance = 0.0
-        for i in 0..<coordinates.count-1 {
-            let start = CLLocation(
-                latitude: coordinates[i].latitude,
-                longitude: coordinates[i].longitude
-            )
-            let end = CLLocation(
-                latitude: coordinates[i+1].latitude,
-                longitude: coordinates[i+1].longitude
-            )
-            totalDistance += end.distance(from: start)
-        }
-        return totalDistance
-    }
-}
 
-struct RouteCoordinate: Codable {
-    let latitude: Double
-    let longitude: Double
-    let timestamp: Date
-}

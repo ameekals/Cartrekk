@@ -181,6 +181,16 @@ struct MainAppView: View {
                         .cornerRadius(10)
                 }
                 .padding(.horizontal)
+                NavigationLink(destination: ExploreView()) {
+                    Text("Explore")
+                        .font(.title2)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding(.horizontal)
                 
                 Button(action: {
                     do {
