@@ -5,58 +5,88 @@
 //  Created by Ameek Singh on 2/17/25.
 //
 
-import Foundation
 import SwiftUI
 import SceneKit
 
 struct GarageView: View {
-    @State private var scene: SCNScene? = nil
+    @ObservedObject var garageManager = GarageManager.shared
     @State private var currentCarIndex = 0
-
-    private let carModels = ["car1", "car2", "car3"] // List of available car models
+    @State private var scene: SCNScene? = nil
+    @State private var showUnlockAlert = false
+    @State private var unlockedCar: String? = nil
 
     var body: some View {
         VStack {
-            if let scene = scene {
+            if garageManager.unlockedCars.isEmpty {
+                Text("Unlock a car to view it!")
+                    .font(.headline)
+                    .foregroundColor(.gray)
+            } else if let scene = scene {
                 SceneView(scene: scene, options: [.autoenablesDefaultLighting, .allowsCameraControl])
                     .frame(height: 400)
                     .cornerRadius(10)
-            } else {
-                Text("Loading 3D Car...")
-                    .font(.title2)
-                    .foregroundColor(.gray)
             }
 
-            HStack {
-                // Previous Car Button
-                Button(action: showPreviousCar) {
-                    Image(systemName: "arrow.left.circle.fill")
-                        .font(.largeTitle)
-                        .foregroundColor(.blue)
-                }
-                .disabled(currentCarIndex == 0) // Disable if already at the first car
-
-                Spacer()
-
-                // Next Car Button
-                Button(action: showNextCar) {
-                    Image(systemName: "arrow.right.circle.fill")
-                        .font(.largeTitle)
-                        .foregroundColor(.blue)
-                }
-                .disabled(currentCarIndex == carModels.count - 1) // Disable if already at the last car
+            // Unlock Button
+            Button(action: unlockCar) {
+                Text("Unlock Car (\(garageManager.usableMiles, specifier: "%.0f") Points)")
+                    .font(.title2)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(garageManager.usableMiles >= 100 ? Color.green : Color.gray)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                    .disabled(garageManager.usableMiles < 100)
             }
             .padding()
+
+            // Navigation Arrows (Only if cars are unlocked)
+            if !garageManager.unlockedCars.isEmpty {
+                HStack {
+                    Button(action: showPreviousCar) {
+                        Image(systemName: "arrow.left.circle.fill")
+                            .font(.largeTitle)
+                            .foregroundColor(.blue)
+                    }
+                    .disabled(currentCarIndex == 0)
+
+                    Spacer()
+
+                    Button(action: showNextCar) {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.largeTitle)
+                            .foregroundColor(.blue)
+                    }
+                    .disabled(currentCarIndex == garageManager.unlockedCars.count - 1)
+                }
+                .padding()
+            }
         }
         .onAppear {
             loadCarModel()
         }
+        .alert(isPresented: $showUnlockAlert) {
+            Alert(
+                title: Text("Car Unlocked!"),
+                message: Text("You unlocked \(unlockedCar ?? "a car")!"),
+                dismissButton: .default(Text("OK"))
+            )
+        }
         .navigationTitle("Garage")
     }
 
-    // MARK: - Load 3D Car Model
+    private func unlockCar() {
+        if let newCar = garageManager.unlockCar() {
+            unlockedCar = newCar
+            showUnlockAlert = true
+            loadCarModel()
+        }
+    }
+
     private func loadCarModel() {
-        let carName = carModels[currentCarIndex]
+        guard !garageManager.unlockedCars.isEmpty else { return }
+
+        let carName = garageManager.unlockedCars[currentCarIndex]
         guard let url = Bundle.main.url(forResource: carName, withExtension: "obj") else {
             print("Error: \(carName).obj not found in App Bundle.")
             return
@@ -72,7 +102,6 @@ struct GarageView: View {
         }
     }
 
-    // MARK: - Navigation Actions
     private func showPreviousCar() {
         if currentCarIndex > 0 {
             currentCarIndex -= 1
@@ -81,10 +110,9 @@ struct GarageView: View {
     }
 
     private func showNextCar() {
-        if currentCarIndex < carModels.count - 1 {
+        if currentCarIndex < garageManager.unlockedCars.count - 1 {
             currentCarIndex += 1
             loadCarModel()
         }
     }
 }
-

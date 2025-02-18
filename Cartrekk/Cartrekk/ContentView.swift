@@ -276,6 +276,12 @@ struct CameraView: UIViewControllerRepresentable {
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = ProfileViewModel()
+    @ObservedObject var garageManager = GarageManager.shared
+    
+    var totalDistanceTraveled: Double {
+        // Summing up the distance of all routes in viewModel.routes
+        viewModel.routes.reduce(0) { $0 + $1.distance }
+    }
     
     var body: some View {
         VStack {
@@ -283,6 +289,13 @@ struct ProfileView: View {
                 .font(.largeTitle)
                 .bold()
                 .padding()
+            
+            Text("Total Miles: \(totalDistanceTraveled, specifier: "%.2f") mi")
+                .font(.headline)
+
+            Text("Usable Points: \(garageManager.usableMiles, specifier: "%.2f")")
+                .font(.headline)
+                .foregroundColor(totalDistanceTraveled >= 100 ? .green : .red)
             
             List(viewModel.routes, id: \.docID) { route in
                 RouteRow(route: route) {
@@ -296,9 +309,13 @@ struct ProfileView: View {
                         }
                     }
                 }
+                Text("Total Miles: \(route.distance, specifier: "%.2f") mi")
+                    .font(.headline)
             }
         }
+        .padding()
         .onAppear {
+//            garageManager.fetchTotalMiles()
             if let userId = authManager.userId {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
