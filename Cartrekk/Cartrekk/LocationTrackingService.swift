@@ -46,6 +46,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     func stopTracking() {
         isTracking = false
         totalDistance = 0.0
+        print("resetting distance")
         locationManager.stopUpdatingLocation()
     }
     
@@ -59,6 +60,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
             if timeSinceLastUpdate >= timeInterval {
                 let distance = location.distance(from: lastLocation) // Returns distance in meters
                 totalDistance += distance // Add to total distance
+                print(totalDistance)
                 locations.append(location)
             }
         } else {
@@ -72,16 +74,19 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     }
     
     // MARK: - Route Data Management
-    func saveRoute(raw_userId: String, time: TimeInterval, routeID: UUID) {
+    func saveRoute(raw_userId: String, time: TimeInterval, routeID: UUID, completion: @escaping () -> Void) {
         let routeId = routeID.uuidString
         
-        // First get the existing document to preserve routeImages
         FirestoreManager.shared.db.collection("routes").document(routeId).getDocument { [weak self] (document, error) in
-            guard let self = self else { return }
+            guard let self = self else {
+                completion()
+                return
+            }
             
             let existingImages = document?.data()?["routeImages"] as? [String] ?? []
             
             let distance = self.totalDistance * 0.00062137
+            print(distance)
             let duration = time
             let likes = 0
             let polyline = Polyline(locations: self.locations)
@@ -97,15 +102,28 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
                 likes: likes,
                 polyline: encodedPolyline,
                 isPublic: isPublic,
-                routeImages: existingImages,  // Use the existing images
+                routeImages: existingImages,
                 userId: userId
-            )
+            ) { [weak self] in
+                completion()  // Call completion after save is done
+            }
         }
     }
     
-    func initialize_route(routeID: UUID?){
+    func initialize_route(routeID: UUID?) {
         let route_id = routeID!.uuidString
-        FirestoreManager.shared.saveRouteDetails(routeId: route_id, distance: 0, duration: 0.0, likes: 0, polyline: "emptyRoute", isPublic: false, routeImages: nil, userId: "emptyUser")
+        FirestoreManager.shared.saveRouteDetails(
+            routeId: route_id,
+            distance: 0,
+            duration: 0.0,
+            likes: 0,
+            polyline: "emptyRoute",
+            isPublic: false,
+            routeImages: nil,
+            userId: "emptyUser"
+        ) {
+
+        }
     }
     
     func addImageToRoute(routeID: UUID?, imageURL: String) {
@@ -134,7 +152,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
             // Append new image URL
             currentImages.append(imageURL)
             
-            FirestoreManager.shared.saveRouteDetails(routeId: route_id, distance: 0, duration: 0.0, likes: 0, polyline: "emptyRoute", isPublic: false, routeImages: currentImages, userId: "emptyUser")
+            FirestoreManager.shared.saveRouteDetails(routeId: route_id, distance: 0, duration: 0.0, likes: 0, polyline: "emptyRoute", isPublic: false, routeImages: currentImages, userId: "emptyUser") {}
             
         }
     }
