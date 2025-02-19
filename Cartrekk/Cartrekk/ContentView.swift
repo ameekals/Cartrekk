@@ -290,12 +290,12 @@ struct ProfileView: View {
                 .bold()
                 .padding()
             
-            Text("Total Miles: \(totalDistanceTraveled, specifier: "%.2f") mi")
-                .font(.headline)
-
-            Text("Usable Points: \(garageManager.usableMiles, specifier: "%.2f")")
-                .font(.headline)
-                .foregroundColor(totalDistanceTraveled >= 100 ? .green : .red)
+//            Text("Total Miles: \(totalDistanceTraveled, specifier: "%.2f") mi")
+//                .font(.headline)
+//
+//            Text("Usable Points: \(garageManager.usableMiles, specifier: "%.2f")")
+//                .font(.headline)
+//                .foregroundColor(totalDistanceTraveled >= 100 ? .green : .red)
             
             List(viewModel.routes, id: \.docID) { route in
                 RouteRow(route: route) {
