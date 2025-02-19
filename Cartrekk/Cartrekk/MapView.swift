@@ -35,13 +35,22 @@ class TrackingStateManager: ObservableObject {
     }
     
     func stopTracking(userId: String) {
-        guard let routeId = currentRouteId else { return } // Use the stored route ID
+        guard let routeId = currentRouteId else { return }
         isTracking = false
         timer?.invalidate()
         timer = nil
-        locationService.saveRoute(raw_userId: userId, time: elapsedTime, routeID: routeId)
-        elapsedTime = 0.0
-        currentRouteId = nil // Clear the route ID
+        
+        // Capture the final elapsed time
+        let finalTime = elapsedTime
+        
+        // Call saveRoute first and wait for completion
+        locationService.saveRoute(raw_userId: userId, time: finalTime, routeID: routeId) { [weak self] in
+            // Only reset everything after the save is complete
+            guard let self = self else { return }
+            self.elapsedTime = 0.0
+            self.locationService.stopTracking()
+            self.currentRouteId = nil
+        }
     }
 }
 
@@ -83,8 +92,8 @@ struct MapView: View {
                 
                 Button(action: {
                     if trackingManager.isTracking {
+                        print("Stopping Route")
                         trackingManager.stopTracking(userId: UUid)
-                        locationService.stopTracking()
                     } else {
                         CLLocationManager().requestAlwaysAuthorization()
                         let newRouteId = UUID() // Generate new route ID

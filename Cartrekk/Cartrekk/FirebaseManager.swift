@@ -52,17 +52,17 @@ class FirestoreManager{
     
     
     // 🔹 Function to save route details
-    func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String) {
+    func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, completion: @escaping () -> Void) {
         let routeRef = db.collection("routes").document(routeId)
 
         let data: [String: Any] = [
-            "createdAt": Timestamp(date: Date()),  // Stores current time
+            "createdAt": Timestamp(date: Date()),
             "distance": distance,
             "duration": duration,
             "likes": likes,
             "polyline": polyline,
             "public": isPublic,
-            "routeImages": routeImages as Any, // Store array or nil
+            "routeImages": routeImages as Any,
             "userid": userId
         ]
 
@@ -72,6 +72,7 @@ class FirestoreManager{
             } else {
                 print("Route successfully saved!")
             }
+            completion()
         }
     }
     
