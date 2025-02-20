@@ -191,6 +191,26 @@ class FirestoreManager{
         
     }
     
+    func addCommentToRoute(routeId: String, userId: String, text: String, completion: @escaping (Error?) -> Void) {
+        let commentsRef = db.collection("routes").document(routeId).collection("comments")
+        
+        let commentData: [String: Any] = [
+            "userid": userId,
+            "text": text,
+            "createdAt": Timestamp(date: Date())
+        ]
+        
+        commentsRef.addDocument(data: commentData) { error in
+            if let error = error {
+                print("Error adding comment: \(error)")
+                completion(error)
+            } else {
+                completion(nil)
+            }
+        }
+    }
+
+    
     
     struct fb_Route {
         let docID: String

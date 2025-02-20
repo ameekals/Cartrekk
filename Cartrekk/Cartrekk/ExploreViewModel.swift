@@ -23,7 +23,8 @@ class ExploreViewModel: ObservableObject {
                         photos: route.routeImages!,
                         likes: route.likes,
                         comments: [], // You might want to load comments separately
-                        polyline: route.polyline
+                        polyline: route.polyline,
+                        userid: route.userId
                     )
                 }
                 
@@ -64,11 +65,28 @@ class ExploreViewModel: ObservableObject {
         }
     }
 
-    func addComment(postId: String, userId: String, username: String, text: String) {
-        let newComment = Comment(id: UUID().uuidString, userId: userId, username: username, text: text, timestamp: Date())
-        if let index = posts.firstIndex(where: { $0.id == postId }) {
-            posts[index].comments.append(newComment)
-            objectWillChange.send()
+    @MainActor
+    func addComment(postId: String, userId: String, username: String, text: String) async {
+        await withCheckedContinuation { continuation in
+            db.addCommentToRoute(routeId: postId, userId: userId, text: text) { error in
+                if let error = error {
+                    print("Error adding comment: \(error)")
+                } else {
+                    // Only update the UI if the database write was successful
+                    if let index = self.posts.firstIndex(where: { $0.id == postId }) {
+                        let newComment = Comment(
+                            id: UUID().uuidString,  // The Firebase document ID would be better here
+                            userId: userId,
+                            username: userId,
+                            text: text,
+                            timestamp: Date()
+                        )
+                        self.posts[index].comments.append(newComment)
+                        self.objectWillChange.send()
+                    }
+                }
+                continuation.resume()
+            }
         }
     }
 }

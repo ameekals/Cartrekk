@@ -7,6 +7,7 @@ struct PostView: View {
     @State private var liked: Bool
     @State private var newComment = ""
     @State private var showCommentsSheet = false
+    @EnvironmentObject var authManager: AuthenticationManager
     
     var post: Post
 
@@ -18,6 +19,15 @@ struct PostView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            
+            HStack {
+                Text(post.userid)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                Spacer()
+            }
+            .padding(.horizontal)
+
             // Swipeable image carousel
             TabView {
                 RoutePreviewMap(post: post)
@@ -77,8 +87,10 @@ struct PostView: View {
                     .textFieldStyle(RoundedBorderTextFieldStyle())
 
                 Button(action: {
-                    viewModel.addComment(postId: post.id, userId: "currentUser", username: "You", text: newComment)
-                    newComment = ""
+                    Task {
+                        await viewModel.addComment(postId: post.id, userId: authManager.userId ?? "", username: "You", text: newComment)
+                        newComment = ""
+                    }
                 }) {
                     Text("Post")
                         .fontWeight(.bold)
@@ -99,20 +111,57 @@ struct CommentsSheet: View {
     var post: Post
     @ObservedObject var viewModel: ExploreViewModel
     @Binding var showCommentsSheet: Bool
+    @State private var newComment: String = ""
+    @EnvironmentObject var authManager: AuthenticationManager
+    
+    func handleAddComment() async {
+        if !newComment.isEmpty {
+            await viewModel.addComment(
+                postId: post.id,
+                userId: authManager.userId ?? "",
+                username: authManager.userId ?? "",
+                text: newComment
+            )
+            newComment = ""
+        }
+    }
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(post.comments) { comment in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(comment.username)
-                            .fontWeight(.bold)
-                        Text(comment.text)
-                        Text(comment.timestamp, style: .relative)
-                            .foregroundColor(.gray)
+            VStack {
+                List {
+                    ForEach(post.comments) { comment in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(comment.username)
+                                .fontWeight(.bold)
+                            Text(comment.text)
+                            Text(comment.timestamp, style: .relative)
+                                .foregroundColor(.gray)
+                        }
+                        .font(.caption)
                     }
-                    .font(.caption)
                 }
+                
+                // Add comment input field at the bottom
+                HStack {
+                    TextField("Add a comment...", text: $newComment)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal)
+                    
+                    Button(action: {
+                        Task {
+                            await handleAddComment()
+                        }
+                    }) {
+                        Text("Post")
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                    }
+                    .padding(.trailing)
+                    .disabled(newComment.isEmpty)
+                }
+                .padding(.vertical, 8)
+                .background(Color(.systemBackground))
             }
             .navigationTitle("Comments")
             .toolbar {
@@ -120,11 +169,6 @@ struct CommentsSheet: View {
                     showCommentsSheet = false
                 }
             }
-            /*
-            .task {
-                // Reload comments when sheet appears
-                await viewModel.loadCommentsForPost(post: post)
-            } */
         }
     }
 }
