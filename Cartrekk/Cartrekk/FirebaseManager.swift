@@ -191,7 +191,18 @@ class FirestoreManager{
          */
         
     }
-    
+    func fetchUsername(userId: String) async -> String? {
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            if document.exists {
+                return document.data()?["username"] as? String
+            }
+            return nil
+        } catch {
+            print("Error fetching username: \(error)")
+            return nil
+        }
+    }
     
     struct fb_Route {
         let docID: String

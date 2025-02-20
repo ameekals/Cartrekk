@@ -23,12 +23,16 @@ struct ContentView: View {
 
     var body: some View {
         if authManager.isLoggedIn {
-            MainAppView()
-                .environmentObject(authManager) // Inject auth manager to access user ID
+            if authManager.needsUsername {
+                UsernameSetupView()
+                    .environmentObject(authManager)
+            } else {
+                MainAppView()
+                    .environmentObject(authManager)
+            }
         } else {
             LoginView(email: $email, password: $password)
                 .environmentObject(authManager)
-        
         }
     }
 }
@@ -38,13 +42,65 @@ struct ContentView: View {
 class AuthenticationManager: ObservableObject {
     @Published var isLoggedIn: Bool = false
     @Published var userId: String? = nil
+    @Published var username: String? = nil
+    @Published var needsUsername: Bool = false
+    
+    private let firebaseManager = FirestoreManager()  // Assuming this is your Firebase manager class
     
     init() {
-        // Set up authentication state listener
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
                 self?.isLoggedIn = user != nil
                 self?.userId = user?.uid
+                if let userId = user?.uid {
+                    // Create a Task to handle the async call
+                    Task {
+                        let username = await self?.firebaseManager.fetchUsername(userId: userId)
+                        // Update UI on main thread
+                        await MainActor.run {
+                            self?.username = username
+                            self?.needsUsername = username == nil
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    func setUsername(_ username: String, completion: @escaping (Bool, String?) -> Void) {
+        guard let userId = userId else { return }
+        
+        // Check if username is already taken
+        let db = Firestore.firestore()
+        db.collection("usernames").document(username).getDocument { [weak self] document, error in
+            if let document = document, document.exists {
+                completion(false, "Username already taken")
+                return
+            }
+            
+            // If username is available, save it
+            db.collection("users").document(userId).setData([
+                "username": username
+            ], merge: true) { error in
+                if let error = error {
+                    completion(false, error.localizedDescription)
+                    return
+                }
+                
+                // Create username reference
+                db.collection("usernames").document(username).setData([
+                    "userid": userId
+                ]) { error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            completion(false, error.localizedDescription)
+                        } else {
+                            self?.username = username
+                            self?.needsUsername = false
+                            completion(true, nil)
+                        }
+                    }
+                }
             }
         }
     }
@@ -146,13 +202,63 @@ struct LoginView: View {
     }
 }
 
+struct UsernameSetupView: View {
+    @EnvironmentObject var authManager: AuthenticationManager
+    @State private var username: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Create Username")
+                .font(.largeTitle)
+                .bold()
+            
+            TextField("Username", text: $username)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+            
+            if let error = errorMessage {
+                Text(error)
+                    .foregroundColor(.red)
+                    .font(.caption)
+            }
+            
+            Button(action: {
+                createUsername()
+            }) {
+                Text("Set Username")
+                    .font(.title2)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+            .disabled(isLoading || username.isEmpty)
+            .padding(.horizontal)
+        }
+        .padding()
+    }
+    
+    private func createUsername() {
+        isLoading = true
+        authManager.setUsername(username) { success, error in
+            isLoading = false
+            if let error = error {
+                errorMessage = error
+            }
+        }
+    }
+}
+
 // MARK: - Main App View
 struct MainAppView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     
     var body: some View {
         Text("Welcome! Your user ID is: \(authManager.userId ?? "Not found")")
-        
+        Text("Your username is: \(authManager.username ?? "Not found")")
         
         NavigationView {
             VStack(spacing: 20) {
@@ -272,6 +378,9 @@ struct ProfileView: View {
             Text("Profile")
                 .font(.largeTitle)
                 .bold()
+                .padding()
+            
+            Text("Hello, \(authManager.username ?? "Not found")").bold()
                 .padding()
             
             List(viewModel.routes, id: \.docID) { route in
