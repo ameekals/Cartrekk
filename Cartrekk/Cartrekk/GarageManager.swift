@@ -5,17 +5,15 @@
 //  Created by Ameek Singh on 2/17/25.
 //
 
-import Foundation
 import FirebaseFirestore
 import FirebaseAuth
 
 class GarageManager: ObservableObject {
-    static let shared = GarageManager() // Singleton instance
+    static let shared = GarageManager()
 
-    // Can input test values for now
     @Published var totalMiles: Double = 0.0
     @Published var usableMiles: Double = 0.0
-    @Published var unlockedCars: [String] = [] // Unlocked cars
+    @Published var unlockedCars: [String] = []
 
     private let allCarsByRarity: [LootboxTier: [String]] = [
         .common: ["car1"],
@@ -26,21 +24,35 @@ class GarageManager: ObservableObject {
     ]
 
     private init() {
+        if let userId = Auth.auth().currentUser?.uid {
+            fetchTotalMiles(userId: userId)
+        } else {
+            print("No logged-in user. Cannot fetch total miles.")
+        }
+    }
+
+    func fetchTotalMiles(userId: String) {
+        FirestoreManager.shared.fetchTotalDistanceForUser(userId: userId) { [weak self] totalDistance in
+            guard let self = self, let totalDistance = totalDistance else {
+                print("Failed to fetch total miles.")
+                return
+            }
+            DispatchQueue.main.async {
+                self.totalMiles = totalDistance
+                self.usableMiles = totalDistance // Initially set usable miles to total miles
+                print("Fetched total miles: \(totalDistance)")
+            }
+        }
     }
     
-    func addMiles(_ miles: Double) {
-        totalMiles += miles
-        usableMiles += miles
-    }
-
     func unlockCar() -> String? {
-        guard usableMiles >= 100 else { return nil } // Not enough points
+        guard usableMiles >= 100 else { return nil }
 
-        usableMiles -= 100 // Deduct points
-        let rarity = rollForRarity() // Determine rarity
+        usableMiles -= 100
+        let rarity = rollForRarity()
         guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else { return nil }
 
-        unlockedCars.append(car) // Add the car to unlocked list
+        unlockedCars.append(car)
         return car
     }
 
@@ -57,6 +69,7 @@ class GarageManager: ObservableObject {
     }
 }
 
+// MARK: - Lootbox Rarity Enum
 enum LootboxTier: String {
     case common = "Common"
     case uncommon = "Uncommon"

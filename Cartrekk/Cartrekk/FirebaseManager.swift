@@ -49,7 +49,27 @@ class FirestoreManager{
         }
     }
     
-    
+    func fetchTotalDistanceForUser(userId: String, completion: @escaping (Double?) -> Void) {
+        let userRef = db.collection("users").document(userId) // Reference to the user document
+
+        userRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error fetching total distance: \(error)")
+                completion(nil)
+                return
+            }
+
+            guard let document = document, document.exists else {
+                print("User document not found for userId: \(userId)")
+                completion(nil)
+                return
+            }
+
+            // Extract total_distance from the user's document
+            let totalDistance = document.data()?["total_distance"] as? Double ?? 0.0
+            completion(totalDistance)
+        }
+    }
     
     // 🔹 Function to save route details
     func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, completion: @escaping () -> Void) {

@@ -275,50 +275,46 @@ struct CameraView: UIViewControllerRepresentable {
 
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
-    @StateObject private var viewModel = ProfileViewModel()
     @ObservedObject var garageManager = GarageManager.shared
+    @StateObject private var viewModel = ProfileViewModel()
     
     var totalDistanceTraveled: Double {
-        // Summing up the distance of all routes in viewModel.routes
         viewModel.routes.reduce(0) { $0 + $1.distance }
     }
-    
+
     var body: some View {
         VStack {
             Text("Profile")
                 .font(.largeTitle)
                 .bold()
                 .padding()
-            
-            Text("Total Miles: \(totalDistanceTraveled, specifier: "%.2f") mi")
+
+            Text("Total Miles: \(garageManager.totalMiles, specifier: "%.2f") mi")
                 .font(.headline)
 
             Text("Usable Points: \(garageManager.usableMiles, specifier: "%.2f")")
                 .font(.headline)
-                .foregroundColor(totalDistanceTraveled >= 100 ? .green : .red)
-            
+                .foregroundColor(garageManager.usableMiles >= 100 ? .green : .red)
+
             List(viewModel.routes, id: \.docID) { route in
                 RouteRow(route: route) {
-                    // Handle actual deletion
                     Task {
                         if await viewModel.deleteRoute(routeId: route.docID) {
-                            // If deletion was successful, reload the routes
                             if let userId = authManager.userId {
                                 await viewModel.loadRoutes(userId: userId)
+                                garageManager.fetchTotalMiles(userId: userId)
                             }
                         }
                     }
                 }
-                Text("Total Miles: \(route.distance, specifier: "%.2f") mi")
-                    .font(.headline)
             }
         }
         .padding()
         .onAppear {
-//            garageManager.fetchTotalMiles()
             if let userId = authManager.userId {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
+                    garageManager.fetchTotalMiles(userId: userId)
                 }
             }
         }
