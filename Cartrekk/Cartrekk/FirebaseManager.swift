@@ -142,54 +142,32 @@ class FirestoreManager{
                 return
             }
             
-            // First, get all comments with their userIds
-            let comments = documents.compactMap { document -> (Comment)? in
+            let dispatchGroup = DispatchGroup()
+            var comments: [Comment] = []
+            
+            for document in documents {
                 let data = document.data()
                 let userId = data["userid"] as? String ?? ""
                 
-                return Comment(
-                    id: document.documentID,
-                    userId: userId,
-                    username: userId, // We'll fill this in after getting user data
-                    text: data["text"] as? String ?? "",
-                    timestamp: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
-                )//, userId)
+                dispatchGroup.enter()
+                self.fetchUsernameSync(userId: userId) { username in
+                    let comment = Comment(
+                        id: document.documentID,
+                        userId: userId,
+                        username: username ?? userId, // Fall back to userId if no username found
+                        text: data["text"] as? String ?? "",
+                        timestamp: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                    )
+                    comments.append(comment)
+                    dispatchGroup.leave()
+                }
             }
-            print(comments)
-            completion(comments)
+            
+            dispatchGroup.notify(queue: .main) {
+                let sortedComments = comments.sorted { $0.timestamp > $1.timestamp }
+                completion(sortedComments)
+            }
         }
-        /*
-         // Get unique userIds
-         let userIds = Set(comments.map { $0.1 })
-         
-         // Fetch usernames for all userIds
-         let usersRef = self.db.collection("users")
-         var usernames: [String: String] = [:]
-         let group = DispatchGroup()
-         
-         for userId in userIds {
-         group.enter()
-         usersRef.document(userId).getDocument { (document, error) in
-         if let document = document, document.exists {
-         usernames[userId] = document.data()?["username"] as? String ?? "Unknown User"
-         }
-         group.leave()
-         }
-         }
-         
-         group.notify(queue: .main) {
-         // Create final comments array with usernames
-         let finalComments = comments.map { comment, userId in
-         Comment(
-         id: comment.id,
-         userId: comment.userId,
-         username: usernames[userId] ?? "Unknown User",
-         text: comment.text,
-         timestamp: comment.timestamp
-         )
-         }
-         */
-        
     }
     
     func addCommentToRoute(routeId: String, userId: String, text: String, completion: @escaping (Error?) -> Void) {
@@ -212,6 +190,19 @@ class FirestoreManager{
     }
 
     
+    func fetchUsernameSync(userId: String, completion: @escaping (String?) -> Void) {
+        let userRef = db.collection("users").document(userId)
+        
+        userRef.getDocument { (document, error) in
+            if let document = document, document.exists {
+                let username = document.data()?["username"] as? String
+                completion(username)
+            } else {
+                completion(nil)
+            }
+        }
+    }
+
     func fetchUsername(userId: String) async -> String? {
         do {
             let document = try await db.collection("users").document(userId).getDocument()

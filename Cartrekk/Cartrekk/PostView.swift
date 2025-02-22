@@ -21,7 +21,7 @@ struct PostView: View {
         VStack(alignment: .leading, spacing: 12) {
             
             HStack {
-                Text(post.userid)
+                Text(post.username)
                     .font(.caption)
                     .foregroundColor(.gray)
                 Spacer()
@@ -88,7 +88,7 @@ struct PostView: View {
 
                 Button(action: {
                     Task {
-                        await viewModel.addComment(postId: post.id, userId: authManager.userId ?? "", username: "You", text: newComment)
+                        await viewModel.addComment(postId: post.id, userId: authManager.userId ?? "", username: authManager.username ?? "", text: newComment)
                         newComment = ""
                     }
                 }) {
@@ -119,7 +119,7 @@ struct CommentsSheet: View {
             await viewModel.addComment(
                 postId: post.id,
                 userId: authManager.userId ?? "",
-                username: authManager.userId ?? "",
+                username: authManager.username ?? "",
                 text: newComment
             )
             newComment = ""

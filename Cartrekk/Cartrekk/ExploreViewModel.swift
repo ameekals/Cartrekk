@@ -24,10 +24,19 @@ class ExploreViewModel: ObservableObject {
                         likes: route.likes,
                         comments: [], // You might want to load comments separately
                         polyline: route.polyline,
-                        userid: route.userId
+                        userid: route.userId,
+                        username: route.userId
                     )
                 }
                 
+                for (index, post) in posts.enumerated() {
+                    self.db.fetchUsernameSync(userId: post.userid) { username in
+                        if let username = username {
+                            self.posts[index].username = username
+                        }
+                    }
+                }
+
                 continuation.resume(returning: posts)
             }
         }
@@ -41,7 +50,6 @@ class ExploreViewModel: ObservableObject {
                 }
             }
         }
-
     }
     
     @MainActor
@@ -77,7 +85,7 @@ class ExploreViewModel: ObservableObject {
                         let newComment = Comment(
                             id: UUID().uuidString,  // The Firebase document ID would be better here
                             userId: userId,
-                            username: userId,
+                            username: username,
                             text: text,
                             timestamp: Date()
                         )
