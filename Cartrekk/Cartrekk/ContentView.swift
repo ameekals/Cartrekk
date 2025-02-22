@@ -412,7 +412,9 @@ struct ProfileView: View {
                         if await viewModel.deleteRoute(routeId: route.docID) {
                             if let userId = authManager.userId {
                                 await viewModel.loadRoutes(userId: userId)
-                                garageManager.fetchTotalMiles(userId: userId)
+                                // Use this when tables per user are added
+//                                garageManager.fetchTotalMiles(userId: userId)
+                                garageManager.fetchTotalMiles(userId: "userid_1")
                             }
                         }
                     }
@@ -424,7 +426,9 @@ struct ProfileView: View {
             if let userId = authManager.userId {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
-                    garageManager.fetchTotalMiles(userId: userId)
+                    // Use this when tables per user are added
+//                    garageManager.fetchTotalMiles(userId: userId)
+                    garageManager.fetchTotalMiles(userId: "userid_1")
                 }
             }
         }

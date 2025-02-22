@@ -46,14 +46,21 @@ class GarageManager: ObservableObject {
     }
     
     func unlockCar() -> String? {
-        guard usableMiles >= 100 else { return nil }
+        guard usableMiles >= 100 else { return "Not enough miles to unlock a car!" }
 
         usableMiles -= 100
         let rarity = rollForRarity()
-        guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else { return nil }
+//        guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else { return nil }
+        guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else {
+            return "Failed to unlock a car!"
+        }
+        
+        if unlockedCars.contains(car) {
+            return "You've already unlocked \(car)!"
+        }
 
         unlockedCars.append(car)
-        return car
+        return "You unlocked \(car)!"
     }
 
     private func rollForRarity() -> LootboxTier {
