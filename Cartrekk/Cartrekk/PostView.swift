@@ -169,6 +169,11 @@ struct CommentsSheet: View {
                     showCommentsSheet = false
                 }
             }
+            /*
+            .task {
+                // Reload comments when sheet appears
+                await viewModel.loadCommentsForPost(post: post)
+            } */
         }
     }
 }

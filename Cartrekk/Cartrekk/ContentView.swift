@@ -23,12 +23,16 @@ struct ContentView: View {
 
     var body: some View {
         if authManager.isLoggedIn {
-            MainAppView()
-                .environmentObject(authManager) // Inject auth manager to access user ID
+            if authManager.needsUsername {
+                UsernameSetupView()
+                    .environmentObject(authManager)
+            } else {
+                MainAppView()
+                    .environmentObject(authManager)
+            }
         } else {
             LoginView(email: $email, password: $password)
                 .environmentObject(authManager)
-        
         }
     }
 }
@@ -38,13 +42,65 @@ struct ContentView: View {
 class AuthenticationManager: ObservableObject {
     @Published var isLoggedIn: Bool = false
     @Published var userId: String? = nil
+    @Published var username: String? = nil
+    @Published var needsUsername: Bool = false
+    
+    private let firebaseManager = FirestoreManager()  // Assuming this is your Firebase manager class
     
     init() {
-        // Set up authentication state listener
         Auth.auth().addStateDidChangeListener { [weak self] _, user in
             DispatchQueue.main.async {
                 self?.isLoggedIn = user != nil
                 self?.userId = user?.uid
+                if let userId = user?.uid {
+                    // Create a Task to handle the async call
+                    Task {
+                        let username = await self?.firebaseManager.fetchUsername(userId: userId)
+                        // Update UI on main thread
+                        await MainActor.run {
+                            self?.username = username
+                            self?.needsUsername = username == nil
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    func setUsername(_ username: String, completion: @escaping (Bool, String?) -> Void) {
+        guard let userId = userId else { return }
+        
+        // Check if username is already taken
+        let db = Firestore.firestore()
+        db.collection("usernames").document(username).getDocument { [weak self] document, error in
+            if let document = document, document.exists {
+                completion(false, "Username already taken")
+                return
+            }
+            
+            // If username is available, save it
+            db.collection("users").document(userId).setData([
+                "username": username
+            ], merge: true) { error in
+                if let error = error {
+                    completion(false, error.localizedDescription)
+                    return
+                }
+                
+                // Create username reference
+                db.collection("usernames").document(username).setData([
+                    "userid": userId
+                ]) { error in
+                    DispatchQueue.main.async {
+                        if let error = error {
+                            completion(false, error.localizedDescription)
+                        } else {
+                            self?.username = username
+                            self?.needsUsername = false
+                            completion(true, nil)
+                        }
+                    }
+                }
             }
         }
     }
@@ -146,13 +202,63 @@ struct LoginView: View {
     }
 }
 
+struct UsernameSetupView: View {
+    @EnvironmentObject var authManager: AuthenticationManager
+    @State private var username: String = ""
+    @State private var isLoading: Bool = false
+    @State private var errorMessage: String? = nil
+    
+    var body: some View {
+        VStack(spacing: 20) {
+            Text("Create Username")
+                .font(.largeTitle)
+                .bold()
+            
+            TextField("Username", text: $username)
+                .textFieldStyle(RoundedBorderTextFieldStyle())
+                .padding()
+            
+            if let error = errorMessage {
+                Text(error)
+                    .foregroundColor(.red)
+                    .font(.caption)
+            }
+            
+            Button(action: {
+                createUsername()
+            }) {
+                Text("Set Username")
+                    .font(.title2)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+            .disabled(isLoading || username.isEmpty)
+            .padding(.horizontal)
+        }
+        .padding()
+    }
+    
+    private func createUsername() {
+        isLoading = true
+        authManager.setUsername(username) { success, error in
+            isLoading = false
+            if let error = error {
+                errorMessage = error
+            }
+        }
+    }
+}
+
 // MARK: - Main App View
 struct MainAppView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     
     var body: some View {
         Text("Welcome! Your user ID is: \(authManager.userId ?? "Not found")")
-        
+        Text("Your username is: \(authManager.username ?? "Not found")")
         
         NavigationView {
             VStack(spacing: 20) {
@@ -218,139 +324,6 @@ struct MainAppView: View {
    }
 }
 
-class TrackingStateManager: ObservableObject {
-    static let shared = TrackingStateManager()
-    let locationService = LocationTrackingService.shared
-    
-    @Published var isTracking = false
-    @Published var startTime: Date?
-    @Published var elapsedTime: TimeInterval = 0.0
-    private var timer: Timer?
-    
-    private init() {}
-    
-    func startTracking() {
-        isTracking = true
-        locationService.startTracking()
-        startTime = Date()
-        elapsedTime = 0.0
-        
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self, let startTime = self.startTime else { return }
-            self.elapsedTime = Date().timeIntervalSince(startTime)
-        }
-    }
-    
-    func stopTracking(userId: String) {
-        isTracking = false
-        timer?.invalidate()
-        timer = nil
-        locationService.saveRoute(raw_userId: userId, time: elapsedTime)
-        elapsedTime = 0.0
-    }
-}
-
-
-// MARK: - Map View
-// Modified MapView
-struct MapView: View {
-    @EnvironmentObject var authManager: AuthenticationManager
-    @StateObject private var locationService = LocationTrackingService.shared
-    @StateObject private var trackingManager = TrackingStateManager.shared
-    @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
-    @State private var route: Route?
-    @State private var showCamera = false
-    @State private var capturedImage: UIImage?
-    
-    var body: some View {
-        let UUid: String = authManager.userId!
-        VStack {
-            Map(position: $cameraPosition) {
-                UserAnnotation()
-                
-                if !locationService.locations.isEmpty {
-                    MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
-                        .stroke(.blue, lineWidth: 3)
-                }
-            }
-            
-            VStack {
-                Text(formatTimeInterval(trackingManager.elapsedTime))
-                    .font(.title2)
-                    .bold()
-                Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137))
-                    .font(.headline)
-            }
-            .padding()
-            
-            HStack {
-                Spacer()
-                Spacer(minLength: 80)
-                
-                Button(action: {
-                    if trackingManager.isTracking {
-                        trackingManager.stopTracking(userId: UUid)
-                        locationService.stopTracking()
-                        
-
-                    } else {
-                        CLLocationManager().requestAlwaysAuthorization()
-                        trackingManager.startTracking()
-                    }
-                }) {
-                    Text(trackingManager.isTracking ? "Stop Tracking" : "Start Tracking")
-                        .padding()
-                        .background(trackingManager.isTracking ? Color.red : Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-                }
-                
-                Spacer()
-                Button(action: {
-                    showCamera = true
-                }) {
-                    Image(systemName: "camera.circle.fill")
-                        .resizable()
-                        .frame(width: 30, height: 30)
-                        .foregroundColor(.white)
-                        .background(Color.blue.opacity(0.9))
-                        .clipShape(Circle())
-                }
-                Spacer()
-            }
-        }
-        .onAppear {
-            CLLocationManager().requestWhenInUseAuthorization()
-            CLLocationManager().requestAlwaysAuthorization()
-        }
-        .sheet(isPresented: $showCamera, onDismiss: handleCameraDismiss){
-            CameraView(image: $capturedImage)
-        }
-    }
-    
-    private func handleCameraDismiss() {
-        if let capturedImage = capturedImage {
-            Task {
-                do {
-                    let imageURL = try await uploadImageToS3(image: capturedImage,
-                                                           imageName: "capturedImage.jpg",
-                                                           bucketName: "cartrekk-images")
-                    print("Image uploaded to S3: \(imageURL)")
-                } catch {
-                    print("Upload failed: \(error.localizedDescription)")
-                }
-            }
-        }
-    }
-    
-    private func formatTimeInterval(_ interval: TimeInterval) -> String {
-        let hours = Int(interval) / 3600
-        let minutes = Int(interval) / 60 % 60
-        let seconds = Int(interval) % 60
-        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
-    }
-}
-
 
 // MARK: - Camera View
 
@@ -405,6 +378,9 @@ struct ProfileView: View {
             Text("Profile")
                 .font(.largeTitle)
                 .bold()
+                .padding()
+            
+            Text("Hello, \(authManager.username ?? "Not found")").bold()
                 .padding()
             
             List(viewModel.routes, id: \.docID) { route in

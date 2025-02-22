@@ -11,7 +11,7 @@ import FirebaseCore
 
 class FirestoreManager{
     static let shared = FirestoreManager()
-    private let db = Firestore.firestore()
+    let db = Firestore.firestore()
     
     func getRoutesForUser(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
         let routesRef = db.collection("routes")
@@ -52,17 +52,17 @@ class FirestoreManager{
     
     
     // 🔹 Function to save route details
-    func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String) {
+    func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, completion: @escaping () -> Void) {
         let routeRef = db.collection("routes").document(routeId)
 
         let data: [String: Any] = [
-            "createdAt": Timestamp(date: Date()),  // Stores current time
+            "createdAt": Timestamp(date: Date()),
             "distance": distance,
             "duration": duration,
             "likes": likes,
             "polyline": polyline,
             "public": isPublic,
-            "routeImages": routeImages as Any, // Store array or nil
+            "routeImages": routeImages as Any,
             "userid": userId
         ]
 
@@ -72,6 +72,7 @@ class FirestoreManager{
             } else {
                 print("Route successfully saved!")
             }
+            completion()
         }
     }
     
@@ -211,6 +212,18 @@ class FirestoreManager{
     }
 
     
+    func fetchUsername(userId: String) async -> String? {
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            if document.exists {
+                return document.data()?["username"] as? String
+            }
+            return nil
+        } catch {
+            print("Error fetching username: \(error)")
+            return nil
+        }
+    }
     
     struct fb_Route {
         let docID: String
