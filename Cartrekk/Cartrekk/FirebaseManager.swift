@@ -150,7 +150,7 @@ class FirestoreManager{
                 return Comment(
                     id: document.documentID,
                     userId: userId,
-                    username: "", // We'll fill this in after getting user data
+                    username: userId, // We'll fill this in after getting user data
                     text: data["text"] as? String ?? "",
                     timestamp: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
                 )//, userId)
@@ -191,6 +191,27 @@ class FirestoreManager{
          */
         
     }
+    
+    func addCommentToRoute(routeId: String, userId: String, text: String, completion: @escaping (Error?) -> Void) {
+        let commentsRef = db.collection("routes").document(routeId).collection("comments")
+        
+        let commentData: [String: Any] = [
+            "userid": userId,
+            "text": text,
+            "createdAt": Timestamp(date: Date())
+        ]
+        
+        commentsRef.addDocument(data: commentData) { error in
+            if let error = error {
+                print("Error adding comment: \(error)")
+                completion(error)
+            } else {
+                completion(nil)
+            }
+        }
+    }
+
+    
     func fetchUsername(userId: String) async -> String? {
         do {
             let document = try await db.collection("users").document(userId).getDocument()
