@@ -68,7 +68,7 @@ struct GarageView: View {
         .alert(isPresented: $showUnlockAlert) {
             Alert(
                 title: Text("Car Unlocked!"),
-                message: Text("You unlocked \(unlockedCar ?? "a car")!"),
+                message: Text("\(unlockedCar ?? "a car")!"),
                 dismissButton: .default(Text("OK"))
             )
         }

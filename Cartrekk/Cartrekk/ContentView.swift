@@ -297,16 +297,6 @@ struct MainAppView: View {
                         .cornerRadius(10)
                 }
                 .padding(.horizontal)
-                NavigationLink(destination: GarageView()) {
-                    Text("Garage")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                }
-                .padding(.horizontal)
                 
                 Button(action: {
                     do {
@@ -406,6 +396,18 @@ struct ProfileView: View {
             Text("Hello, \(authManager.username ?? "Not found")").bold()
                 .padding()
             
+            // If we want to keep the blue button
+//            NavigationLink(destination: GarageView()) {
+//                Text("Garage")
+//                    .font(.title2)
+//                    .padding()
+//                    .frame(maxWidth: .infinity)
+//                    .background(Color.blue)
+//                    .foregroundColor(.white)
+//                    .cornerRadius(10)
+//            }
+//            .padding(.horizontal)
+
             List(viewModel.routes, id: \.docID) { route in
                 RouteRow(route: route) {
                     Task {
@@ -422,6 +424,16 @@ struct ProfileView: View {
             }
         }
         .padding()
+        .navigationTitle("Profile")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink(destination: GarageView()) {
+                    Text("Garage")
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                }
+            }
+        }
         .onAppear {
             if let userId = authManager.userId {
                 Task {
