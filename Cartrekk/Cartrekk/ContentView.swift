@@ -68,7 +68,8 @@ class AuthenticationManager: ObservableObject {
     }
     
     func setUsername(_ username: String, completion: @escaping (Bool, String?) -> Void) {
-        guard let userId = userId else { return }
+        guard let userId = userId,
+            let email = Auth.auth().currentUser?.email else { return }
         
         // Check if username is already taken
         let db = Firestore.firestore()
@@ -79,9 +80,17 @@ class AuthenticationManager: ObservableObject {
             }
             
             // If username is available, save it
-            db.collection("users").document(userId).setData([
-                "username": username
-            ], merge: true) { error in
+            db.collection("users").document(userId).setData(
+                [
+                "distance_used" : 0,
+                "email" : email,
+                "friends" : [],
+                "inventory" : [],
+                "profilePictureURL" : "",
+                "total_distance" : 0,
+                "username": username,
+                ],
+                merge: true) { error in
                 if let error = error {
                     completion(false, error.localizedDescription)
                     return
