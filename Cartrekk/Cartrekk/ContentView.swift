@@ -393,17 +393,7 @@ struct ProfileView: View {
                 .padding()
             
             List(viewModel.routes, id: \.docID) { route in
-                RouteRow(route: route) {
-                    // Handle actual deletion
-                    Task {
-                        if await viewModel.deleteRoute(routeId: route.docID) {
-                            // If deletion was successful, reload the routes
-                            if let userId = authManager.userId {
-                                await viewModel.loadRoutes(userId: userId)
-                            }
-                        }
-                    }
-                }
+                RouteRow(route: route)
             }
         }
         .onAppear {
@@ -420,8 +410,18 @@ struct ProfileView: View {
 // MARK: - Route Row
 struct RouteRow: View {
     let route: FirestoreManager.fb_Route
+    @StateObject private var viewModel = ProfileViewModel()
+    @EnvironmentObject var authManager: AuthenticationManager
+    @State private var isCurrentlyPublic: Bool  // Add state to track public status
+    
+    init(route: FirestoreManager.fb_Route) {
+        self.route = route
+        // Initialize the state with the route's public status
+        _isCurrentlyPublic = State(initialValue: route.isPublic)
+    }
     @State private var showDeleteConfirmation = false
-    var onDelete: () -> Void
+    @State private var showPostConfirmation = false
+    @State private var isLiked = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -433,8 +433,7 @@ struct RouteRow: View {
                 }
                 
                 Spacer()
-            
-                // Isolated delete button
+                
                 Button(action: {
                     showDeleteConfirmation = true
                 }) {
@@ -448,11 +447,15 @@ struct RouteRow: View {
                     titleVisibility: .visible
                 ) {
                     Button("Delete", role: .destructive) {
-                        onDelete()
+                        Task {
+                            if await viewModel.deleteRoute(routeId: route.docID) {
+                                if let userId = authManager.userId {
+                                    await viewModel.loadRoutes(userId: userId)
+                                }
+                            }
+                        }
                     }
                     Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Are you sure you want to delete this route? This action cannot be undone.")
                 }
             }
             
@@ -471,11 +474,11 @@ struct RouteRow: View {
             if let locations = polyline.locations, !locations.isEmpty {
                 Map {
                     Marker("Start",
-                        coordinate: locations.first!.coordinate)
+                           coordinate: locations.first!.coordinate)
                     .tint(.green)
                     
                     Marker("End",
-                        coordinate: locations.last!.coordinate)
+                           coordinate: locations.last!.coordinate)
                     .tint(.red)
                     
                     MapPolyline(coordinates: locations.map { $0.coordinate })
@@ -492,8 +495,47 @@ struct RouteRow: View {
                 .frame(height: 200)
                 .cornerRadius(10)
             }
+            HStack(spacing: 20) {
+                // Likes display
+                HStack {
+                    Image(systemName: "heart")
+                        .foregroundColor(.red)
+                    Text("\(route.likes)")
+                        .foregroundColor(.gray)
+                }
+                
+                // Public/Private toggle
+                Button(action: {
+                    print("Button tapped") // Debug print
+                    showPostConfirmation = true
+                }) {
+                    HStack {
+                        Image(systemName: isCurrentlyPublic ? "globe" : "globe.slash")
+                        Text(isCurrentlyPublic ? "Public" : "Private")
+                    }
+                    .foregroundColor(isCurrentlyPublic ? .blue : .gray)
+                }
+                .buttonStyle(.borderless)
+                .confirmationDialog(
+                    isCurrentlyPublic ? "Make Private" : "Make Public",
+                    isPresented: $showPostConfirmation
+                ) {
+                    Button(isCurrentlyPublic ? "Make Private" : "Make Public") {
+                        // Toggle the UI state immediately
+                        isCurrentlyPublic.toggle()
+                        
+                        // Update Firestore in background
+                        Task {
+                            await viewModel.togglePublicStatus(routeId: route.docID)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {
+                        print("Cancel tapped") // Debug print
+                    }
+                }
+            }
+            .padding(.vertical, 8)
         }
-        .padding(.vertical, 8)
     }
     
     // Keep your existing helper functions
@@ -535,6 +577,23 @@ class ProfileViewModel: ObservableObject {
             db.deleteRoute(routeId: routeId) { success in
                 continuation.resume(returning: success)
             }
+        }
+    }
+    func togglePublicStatus(routeId: String) async {
+        print("Attempting to toggle in Firestore")
+        let db = Firestore.firestore()
+        do {
+            // First get current status
+            let doc = try await db.collection("routes").document(routeId).getDocument()
+            let isCurrentlyPublic = doc.data()?["public"] as? Bool ?? false
+            
+            // Toggle it
+            try await db.collection("routes").document(routeId).updateData([
+                "public": !isCurrentlyPublic
+            ])
+            print("Successfully toggled in Firestore from \(isCurrentlyPublic) to \(!isCurrentlyPublic)")
+        } catch {
+            print("Error toggling public status: \(error)")
         }
     }
 }
