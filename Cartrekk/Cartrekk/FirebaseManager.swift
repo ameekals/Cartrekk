@@ -24,7 +24,6 @@ class FirestoreManager{
             }
             
             guard let documents = snapshot?.documents else {
-                print("No routes found for user: \(userId)")
                 completion(nil)
                 return
             }
@@ -155,7 +154,6 @@ class FirestoreManager{
                     timestamp: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
                 )//, userId)
             }
-            print(comments)
             completion(comments)
         }
         /*
