@@ -26,13 +26,16 @@ struct ContentView: View {
             if authManager.needsUsername {
                 UsernameSetupView()
                     .environmentObject(authManager)
+                    .preferredColorScheme(.dark)
             } else {
                 MainAppView()
                     .environmentObject(authManager)
+                    .preferredColorScheme(.dark)
             }
         } else {
             LoginView(email: $email, password: $password)
                 .environmentObject(authManager)
+                .preferredColorScheme(.dark)
         }
     }
 }
@@ -127,6 +130,7 @@ struct LoginView: View {
             Text("Cartrekk")
                 .font(.largeTitle)
                 .bold()
+                .foregroundColor(.white)
 
             TextField("Email", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -166,6 +170,7 @@ struct LoginView: View {
             .padding(.horizontal)
         }
         .padding()
+        .background(Color.black.edgesIgnoringSafeArea(.all))
     }
 
     func loginWithEmail() {
@@ -205,7 +210,6 @@ struct LoginView: View {
                 if let error = error {
                     print("Firebase authentication error: \(error.localizedDescription)")
                 }
-                // AuthenticationManager will automatically update state
             }
         }
     }
@@ -266,73 +270,30 @@ struct MainAppView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     
     var body: some View {
-        Text("Welcome! Your user ID is: \(authManager.userId ?? "Not found")")
-        Text("Your username is: \(authManager.username ?? "Not found")")
-        
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("Cartrekk")
-                    .font(.largeTitle)
-                    .bold()
-                
-                NavigationLink(destination: MapView()) {
-                    Text("START")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+        TabView {
+            MapView()
+                .tabItem {
+                    Image(systemName: "map")
+                    Text("Map")
                 }
-                .padding(.horizontal)
-                
-                NavigationLink(destination: ProfileView()) {
-                    Text("User Profile")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+            
+            ProfileView()
+                .tabItem {
+                    Image(systemName: "person.circle")
+                    Text("Profile")
                 }
-                .padding(.horizontal)
-                NavigationLink(destination: ExploreView()) {
+            
+            ExploreView()
+                .tabItem {
+                    Image(systemName: "globe")
                     Text("Explore")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
                 }
-                .padding(.horizontal)
-                
-                Button(action: {
-                    do {
-                        try Auth.auth().signOut()
-                        authManager.isLoggedIn = false
-                        authManager.userId = nil
-                    } catch {
-                        print("Error signing out: \(error.localizedDescription)")
-                    }
-                }) {
-                    Text("Log Out")
-                        .font(.subheadline)  // Changed from .title2 to .subheadline
-                        .padding(.vertical, 8)  // Reduced vertical padding
-                        .padding(.horizontal, 20)  // Added horizontal padding
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)  // Slightly reduced corner radius
-                }
-                .padding(.top, 20)
-               
-           }
-           .padding()
-           .navigationBarHidden(true)
-       }
-   }
+        }
+        .accentColor(.blue)
+        .background(Color.black.edgesIgnoringSafeArea(.all))
+        .preferredColorScheme(.dark)
+    }
 }
-
 
 // MARK: - Camera View
 
@@ -381,20 +342,45 @@ struct CameraView: UIViewControllerRepresentable {
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = ProfileViewModel()
+    @State private var showPastRoutes = false
     
     var body: some View {
-        VStack {
-            Text("Profile")
-                .font(.largeTitle)
-                .bold()
-                .padding()
-            
-            Text("Hello, \(authManager.username ?? "Not found")").bold()
-                .padding()
-            
-            List(viewModel.routes, id: \.docID) { route in
-                RouteRow(route: route)
+        NavigationView {
+            VStack {
+                // Profile Image
+                Image(systemName: "person.crop.circle.fill")
+                    .resizable()
+                    .frame(width: 100, height: 100)
+                    .foregroundColor(.gray)
+                    .padding(.top, 40)
+                
+                // Username
+                Text(authManager.username ?? "Not found")
+                    .font(.title)
+                    .bold()
+                    .foregroundColor(.white)
+                    .padding(.top, 10)
+
+                VStack(spacing: 15) {
+                    NavigationLink(destination: PastRoutesView()) {
+                        ProfileButton(title: "Past Routes", icon: "map")
+                    }
+                    
+                    ProfileButton(title: "Settings", icon: "gearshape")
+                    
+                    ProfileButton(title: "Support", icon: "questionmark.circle")
+                    
+                    Button(action: logout) {
+                        ProfileButton(title: "Log Out", icon: "arrow.backward", color: .red)
+                    }
+                }
+                .padding(.top, 30)
+                
+                Spacer()
             }
+            .frame(maxWidth: .infinity)
+            .background(Color.black.edgesIgnoringSafeArea(.all))
+            .navigationBarHidden(true)
         }
         .onAppear {
             if let userId = authManager.userId {
@@ -404,8 +390,84 @@ struct ProfileView: View {
             }
         }
     }
+    
+    private func logout() {
+        do {
+            try Auth.auth().signOut()
+            authManager.isLoggedIn = false
+            authManager.userId = nil
+        } catch {
+            print("Error signing out: \(error.localizedDescription)")
+        }
+    }
 }
 
+// MARK: - Profile Button Component
+struct ProfileButton: View {
+    var title: String
+    var icon: String
+    var color: Color = .blue
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.white)
+                .imageScale(.large)
+            
+            Text(title)
+                .font(.title3)
+                .bold()
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(color.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Past Routes View
+struct PastRoutesView: View {
+    @EnvironmentObject var authManager: AuthenticationManager
+    @StateObject private var viewModel = ProfileViewModel()
+    
+    var body: some View {
+        VStack {
+            Text("Past Routes")
+                .font(.largeTitle)
+                .bold()
+                .foregroundColor(.white)
+                .padding(.top, 20)
+            
+            if viewModel.routes.isEmpty {
+                Text("No past routes available.")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                List(viewModel.routes, id: \.docID) { route in
+                    RouteRow(route: route)
+                }
+                .background(Color.black)
+            }
+            
+            Spacer()
+        }
+        .background(Color.black.edgesIgnoringSafeArea(.all))
+        .onAppear {
+            if let userId = authManager.userId {
+                Task {
+                    await viewModel.loadRoutes(userId: userId)
+                }
+            }
+        }
+    }
+}
 
 // MARK: - Route Row
 struct RouteRow: View {
