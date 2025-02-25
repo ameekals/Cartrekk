@@ -97,4 +97,40 @@ class ExploreViewModel: ObservableObject {
             }
         }
     }
+    
+    @MainActor
+    func updateLikesForPost(postId: String) {
+        Task {
+            await withCheckedContinuation { continuation in
+                db.getLikeCount(routeId: postId) { likeCount in
+                    if let index = self.posts.firstIndex(where: { $0.id == postId }) {
+                        self.posts[index].likes = likeCount
+                        self.objectWillChange.send()
+                    }
+                    continuation.resume()
+                }
+            }
+        }
+    }
+        
+    @MainActor
+    func likePost(postId: String, userId: String) async {
+        await withCheckedContinuation { continuation in
+            db.handleLike(routeId: postId, userId: userId) { error in
+                if let error = error {
+                    print("Error handling like: \(error)")
+                } else {
+                    // Update like count after successful Firebase operation
+                    self.updateLikesForPost(postId: postId)
+                }
+                continuation.resume()
+            }
+        }
+    }
+    
+    func checkUserLikeStatus(postId: String, userId: String, completion: @escaping (Bool) -> Void) {
+        db.getUserLikeStatus(routeId: postId, userId: userId, completion: completion)
+    }
+
+
 }

@@ -93,7 +93,11 @@ class FirestoreManager{
     func getPublicRoutes(completion: @escaping ([fb_Route]?) -> Void) {
         let routesRef = db.collection("routes")
         
-        routesRef.whereField("public", isEqualTo: true).getDocuments(source: .default) { (snapshot, error) in
+        routesRef
+            .whereField("public", isEqualTo: true)
+            .order(by: "createdAt", descending: true)  // Get newest first
+            .limit(to: 15)  // Only get 15 documents
+            .getDocuments(source: .default) { (snapshot, error) in
             if let error = error {
                 print("Error fetching public routes: \(error)")
                 completion(nil)
@@ -189,6 +193,82 @@ class FirestoreManager{
         }
     }
 
+    func handleLike(routeId: String, userId: String, completion: @escaping (Error?) -> Void) {
+        let likeRef = db.collection("routes").document(routeId).collection("likes").document(userId)
+        let routeRef = db.collection("routes").document(routeId)
+
+        // First check if the user has already liked the post
+        likeRef.getDocument { (document, error) in
+            if let error = error {
+                completion(error)
+                return
+            }
+            
+            if let document = document, document.exists {
+                // User already liked the post, so unlike it
+                likeRef.delete { error in
+                    if let error = error {
+                        completion(error)
+                        return
+                    }
+                    
+                    // Only after successful deletion, update the count
+                    routeRef.updateData(["likes": FieldValue.increment(Int64(-1))]) { error in
+                        completion(error)  // Call completion once at the end
+                    }
+                }
+            } else {
+                // User hasn't liked the post, so add the like
+                let likeData: [String: Any] = [
+                    "timestamp": Timestamp(date: Date())
+                ]
+                likeRef.setData(likeData) { error in
+                    if let error = error {
+                        completion(error)
+                        return
+                    }
+                    
+                    // Only after successful addition, update the count
+                    routeRef.updateData(["likes": FieldValue.increment(Int64(1))]) { error in
+                        completion(error)  // Call completion once at the end
+                    }
+                }
+            }
+        }
+    }
+
+    func getUserLikeStatus(routeId: String, userId: String, completion: @escaping (Bool) -> Void) {
+        let likeRef = db.collection("routes").document(routeId).collection("likes").document(userId)
+        
+        likeRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error checking like status: \(error)")
+                completion(false)
+                return
+            }
+            
+            completion(document?.exists ?? false)
+        }
+    }
+
+    func getLikeCount(routeId: String, completion: @escaping (Int) -> Void) {
+        let routeRef = db.collection("routes").document(routeId)
+        
+        routeRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error fetching like count: \(error)")
+                completion(0)
+                return
+            }
+            
+            if let document = document, document.exists {
+                let likes = document.data()?["likes"] as? Int ?? 0
+                completion(likes)
+            } else {
+                completion(0)
+            }
+        }
+    }
     
     func fetchUsernameSync(userId: String, completion: @escaping (String?) -> Void) {
         let userRef = db.collection("users").document(userId)

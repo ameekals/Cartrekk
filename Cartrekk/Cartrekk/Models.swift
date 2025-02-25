@@ -14,7 +14,6 @@ struct Post: Identifiable {
     var photos: [String]
     var likes: Int
     var comments: [Comment]
-    var likedUserIds: [String] = []
     var polyline: String
     var userid: String
     var username: String

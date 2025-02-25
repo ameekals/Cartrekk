@@ -52,8 +52,10 @@ struct PostView: View {
             // Like & Comment Section
             HStack {
                 Button(action: {
-                    liked.toggle()
-                    viewModel.likePost(postId: post.id)
+                    Task {
+                        await viewModel.likePost(postId: post.id, userId: authManager.userId ?? "")
+                        liked.toggle()
+                    }
                 }) {
                     Image(systemName: liked ? "heart.fill" : "heart")
                         .foregroundColor(liked ? .red : .gray)
@@ -100,6 +102,15 @@ struct PostView: View {
             .padding(.horizontal)
         }
         .padding(.vertical, 8)
+        .onAppear {
+            // Check if user liked this post when view appears
+            viewModel.checkUserLikeStatus(
+                postId: post.id,
+                userId: authManager.userId ?? ""
+            ) { isLiked in
+                liked = isLiked
+            }
+        }
         .sheet(isPresented: $showCommentsSheet) {
             CommentsSheet(post: post, viewModel: viewModel, showCommentsSheet: $showCommentsSheet)
         }
