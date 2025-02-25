@@ -76,6 +76,12 @@ struct MapView: View {
                         .stroke(.blue, lineWidth: 3)
                 }
             }
+            .mapControls {
+                MapCompass()
+                MapUserLocationButton()
+                MapPitchToggle()
+                MapScaleView()
+            }
             
             VStack {
                 Text(formatTimeInterval(trackingManager.elapsedTime))

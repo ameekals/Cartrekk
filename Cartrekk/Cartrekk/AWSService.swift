@@ -107,6 +107,31 @@ func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) asy
     return imageURL
 }
 
+func getImageFromS3(imageURL: String) async throws -> UIImage {
+    // Validate the URL
+    guard let url = URL(string: imageURL) else {
+        throw NSError(domain: "InvalidURLError", code: -1, userInfo: [NSLocalizedDescriptionKey: "The provided URL is invalid"])
+    }
+
+    do {
+        // Fetch the image data
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        // Check for a valid HTTP response
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw NSError(domain: "NetworkError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch image from S3"])
+        }
+
+        // Convert data to UIImage
+        guard let image = UIImage(data: data) else {
+            throw NSError(domain: "ImageConversionError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert data to UIImage"])
+        }
+
+        return image
+    } catch {
+        throw error // Forward any network or data errors
+    }
+}
 /*
 private init() async {
     /*let accessKeyTop = ProcessInfo.processInfo.environment["AWS_ACCESS_KEY_ID"] ?? ""
