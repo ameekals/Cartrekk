@@ -87,8 +87,8 @@ struct GarageView: View {
         guard !garageManager.unlockedCars.isEmpty else { return }
 
         let carName = garageManager.unlockedCars[currentCarIndex]
-        guard let url = Bundle.main.url(forResource: carName, withExtension: "obj") else {
-            print("Error: \(carName).obj not found in App Bundle.")
+        guard let url = Bundle.main.url(forResource: carName, withExtension: "ply") else {
+            print("Error: \(carName).ply not found in App Bundle.")
             return
         }
 
@@ -98,7 +98,7 @@ struct GarageView: View {
                 self.scene = carScene
             }
         } catch {
-            print("Failed to load \(carName).obj: \(error.localizedDescription)")
+            print("Failed to load \(carName).ply: \(error.localizedDescription)")
         }
     }
 
