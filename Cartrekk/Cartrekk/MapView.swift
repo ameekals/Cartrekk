@@ -20,11 +20,11 @@ class TrackingStateManager: ObservableObject {
     
     private init() {}
     
-    func startTracking(routeId: UUID) { // Modify to accept routeId
+    func startTracking(routeId: UUID, userID: String) { // Modify to accept routeId
         isTracking = true
         currentRouteId = routeId // Store the route ID
         locationService.startTracking()
-        locationService.initialize_route(routeID: routeId) // Initialize with the same ID
+        locationService.initialize_route(routeID: routeId, userID: userID) // Initialize with the same ID
         startTime = Date()
         elapsedTime = 0.0
         
@@ -97,7 +97,7 @@ struct MapView: View {
                     } else {
                         CLLocationManager().requestAlwaysAuthorization()
                         let newRouteId = UUID() // Generate new route ID
-                        trackingManager.startTracking(routeId: newRouteId) // Pass it to tracking manager
+                        trackingManager.startTracking(routeId: newRouteId, userID: UUid) // Pass it to tracking manager
                     }
                 }) {
                     Text(trackingManager.isTracking ? "Stop Tracking" : "Start Tracking")

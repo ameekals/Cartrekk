@@ -110,17 +110,17 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
         }
     }
     
-    func initialize_route(routeID: UUID?) {
+    func initialize_route(routeID: UUID?, userID: String) {
         let route_id = routeID!.uuidString
         FirestoreManager.shared.saveRouteDetails(
             routeId: route_id,
             distance: 0,
             duration: 0.0,
             likes: 0,
-            polyline: "emptyRoute",
+            polyline: "",
             isPublic: false,
             routeImages: nil,
-            userId: "emptyUser"
+            userId: userID
         ) {
 
         }
@@ -152,7 +152,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
             // Append new image URL
             currentImages.append(imageURL)
             
-            FirestoreManager.shared.saveRouteDetails(routeId: route_id, distance: 0, duration: 0.0, likes: 0, polyline: "emptyRoute", isPublic: false, routeImages: currentImages, userId: "emptyUser") {}
+            FirestoreManager.shared.updateRouteImages(routeId: route_id, newImageUrl: imageURL) {_ in }
             
         }
     }
