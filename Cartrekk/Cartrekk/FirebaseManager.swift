@@ -92,7 +92,11 @@ class FirestoreManager{
     func getPublicRoutes(completion: @escaping ([fb_Route]?) -> Void) {
         let routesRef = db.collection("routes")
         
-        routesRef.whereField("public", isEqualTo: true).getDocuments(source: .default) { (snapshot, error) in
+        routesRef
+            .whereField("public", isEqualTo: true)
+            .order(by: "createdAt", descending: true)  // Get newest first
+            .limit(to: 15)  // Only get 15 documents
+            .getDocuments(source: .default) { (snapshot, error) in
             if let error = error {
                 print("Error fetching public routes: \(error)")
                 completion(nil)
@@ -141,53 +145,33 @@ class FirestoreManager{
                 return
             }
             
-            // First, get all comments with their userIds
-            let comments = documents.compactMap { document -> (Comment)? in
+            let dispatchGroup = DispatchGroup()
+            var comments: [Comment] = []
+            
+            for document in documents {
                 let data = document.data()
                 let userId = data["userid"] as? String ?? ""
                 
-                return Comment(
-                    id: document.documentID,
-                    userId: userId,
-                    username: userId, // We'll fill this in after getting user data
-                    text: data["text"] as? String ?? "",
-                    timestamp: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
-                )//, userId)
+
+                dispatchGroup.enter()
+                self.fetchUsernameSync(userId: userId) { username in
+                    let comment = Comment(
+                        id: document.documentID,
+                        userId: userId,
+                        username: username ?? userId, // Fall back to userId if no username found
+                        text: data["text"] as? String ?? "",
+                        timestamp: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+                    )
+                    comments.append(comment)
+                    dispatchGroup.leave()
+                }
             }
-            completion(comments)
+            
+            dispatchGroup.notify(queue: .main) {
+                let sortedComments = comments.sorted { $0.timestamp > $1.timestamp }
+                completion(sortedComments)
+            }
         }
-        /*
-         // Get unique userIds
-         let userIds = Set(comments.map { $0.1 })
-         
-         // Fetch usernames for all userIds
-         let usersRef = self.db.collection("users")
-         var usernames: [String: String] = [:]
-         let group = DispatchGroup()
-         
-         for userId in userIds {
-         group.enter()
-         usersRef.document(userId).getDocument { (document, error) in
-         if let document = document, document.exists {
-         usernames[userId] = document.data()?["username"] as? String ?? "Unknown User"
-         }
-         group.leave()
-         }
-         }
-         
-         group.notify(queue: .main) {
-         // Create final comments array with usernames
-         let finalComments = comments.map { comment, userId in
-         Comment(
-         id: comment.id,
-         userId: comment.userId,
-         username: usernames[userId] ?? "Unknown User",
-         text: comment.text,
-         timestamp: comment.timestamp
-         )
-         }
-         */
-        
     }
     
     func addCommentToRoute(routeId: String, userId: String, text: String, completion: @escaping (Error?) -> Void) {
@@ -209,7 +193,96 @@ class FirestoreManager{
         }
     }
 
+    func handleLike(routeId: String, userId: String, completion: @escaping (Error?) -> Void) {
+        let likeRef = db.collection("routes").document(routeId).collection("likes").document(userId)
+        let routeRef = db.collection("routes").document(routeId)
+
+        // First check if the user has already liked the post
+        likeRef.getDocument { (document, error) in
+            if let error = error {
+                completion(error)
+                return
+            }
+            
+            if let document = document, document.exists {
+                // User already liked the post, so unlike it
+                likeRef.delete { error in
+                    if let error = error {
+                        completion(error)
+                        return
+                    }
+                    
+                    // Only after successful deletion, update the count
+                    routeRef.updateData(["likes": FieldValue.increment(Int64(-1))]) { error in
+                        completion(error)  // Call completion once at the end
+                    }
+                }
+            } else {
+                // User hasn't liked the post, so add the like
+                let likeData: [String: Any] = [
+                    "timestamp": Timestamp(date: Date())
+                ]
+                likeRef.setData(likeData) { error in
+                    if let error = error {
+                        completion(error)
+                        return
+                    }
+                    
+                    // Only after successful addition, update the count
+                    routeRef.updateData(["likes": FieldValue.increment(Int64(1))]) { error in
+                        completion(error)  // Call completion once at the end
+                    }
+                }
+            }
+        }
+    }
+
+    func getUserLikeStatus(routeId: String, userId: String, completion: @escaping (Bool) -> Void) {
+        let likeRef = db.collection("routes").document(routeId).collection("likes").document(userId)
+        
+        likeRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error checking like status: \(error)")
+                completion(false)
+                return
+            }
+            
+            completion(document?.exists ?? false)
+        }
+    }
+
+    func getLikeCount(routeId: String, completion: @escaping (Int) -> Void) {
+        let routeRef = db.collection("routes").document(routeId)
+        
+        routeRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error fetching like count: \(error)")
+                completion(0)
+                return
+            }
+            
+            if let document = document, document.exists {
+                let likes = document.data()?["likes"] as? Int ?? 0
+                completion(likes)
+            } else {
+                completion(0)
+            }
+        }
+    }
     
+    func fetchUsernameSync(userId: String, completion: @escaping (String?) -> Void) {
+        let userRef = db.collection("users").document(userId)
+        
+        userRef.getDocument { (document, error) in
+            if let document = document, document.exists {
+                let username = document.data()?["username"] as? String
+                completion(username)
+            } else {
+                completion(nil)
+            }
+        }
+    }
+
     func fetchUsername(userId: String) async -> String? {
         do {
             let document = try await db.collection("users").document(userId).getDocument()

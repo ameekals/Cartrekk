@@ -21,7 +21,7 @@ struct PostView: View {
         VStack(alignment: .leading, spacing: 12) {
             
             HStack {
-                Text(post.userid)
+                Text(post.username)
                     .font(.caption)
                     .foregroundColor(.gray)
                 Spacer()
@@ -52,8 +52,10 @@ struct PostView: View {
             // Like & Comment Section
             HStack {
                 Button(action: {
-                    liked.toggle()
-                    viewModel.likePost(postId: post.id)
+                    Task {
+                        await viewModel.likePost(postId: post.id, userId: authManager.userId ?? "")
+                        liked.toggle()
+                    }
                 }) {
                     Image(systemName: liked ? "heart.fill" : "heart")
                         .foregroundColor(liked ? .red : .gray)
@@ -88,7 +90,7 @@ struct PostView: View {
 
                 Button(action: {
                     Task {
-                        await viewModel.addComment(postId: post.id, userId: authManager.userId ?? "", username: "You", text: newComment)
+                        await viewModel.addComment(postId: post.id, userId: authManager.userId ?? "", username: authManager.username ?? "", text: newComment)
                         newComment = ""
                     }
                 }) {
@@ -100,6 +102,15 @@ struct PostView: View {
             .padding(.horizontal)
         }
         .padding(.vertical, 8)
+        .onAppear {
+            // Check if user liked this post when view appears
+            viewModel.checkUserLikeStatus(
+                postId: post.id,
+                userId: authManager.userId ?? ""
+            ) { isLiked in
+                liked = isLiked
+            }
+        }
         .sheet(isPresented: $showCommentsSheet) {
             CommentsSheet(post: post, viewModel: viewModel, showCommentsSheet: $showCommentsSheet)
         }
@@ -119,7 +130,7 @@ struct CommentsSheet: View {
             await viewModel.addComment(
                 postId: post.id,
                 userId: authManager.userId ?? "",
-                username: authManager.userId ?? "",
+                username: authManager.username ?? "",
                 text: newComment
             )
             newComment = ""
