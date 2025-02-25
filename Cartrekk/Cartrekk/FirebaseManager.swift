@@ -24,7 +24,6 @@ class FirestoreManager{
             }
             
             guard let documents = snapshot?.documents else {
-                print("No routes found for user: \(userId)")
                 completion(nil)
                 return
             }
@@ -153,6 +152,7 @@ class FirestoreManager{
                 let data = document.data()
                 let userId = data["userid"] as? String ?? ""
                 
+
                 dispatchGroup.enter()
                 self.fetchUsernameSync(userId: userId) { username in
                     let comment = Comment(
