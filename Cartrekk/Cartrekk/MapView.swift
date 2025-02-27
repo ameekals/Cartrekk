@@ -7,7 +7,6 @@
 import SwiftUI
 import MapKit
 
-
 class TrackingStateManager: ObservableObject {
     static let shared = TrackingStateManager()
     let locationService = LocationTrackingService.shared
@@ -15,14 +14,15 @@ class TrackingStateManager: ObservableObject {
     @Published var isTracking = false
     @Published var startTime: Date?
     @Published var elapsedTime: TimeInterval = 0.0
-    @Published var currentRouteId: UUID? // Add this to store the current route ID
+    @Published var currentRouteId: UUID?
     private var timer: Timer?
     
     private init() {}
     
+
     func startTracking(routeId: UUID, userID: String) { // Modify to accept routeId
         isTracking = true
-        currentRouteId = routeId // Store the route ID
+        currentRouteId = routeId
         locationService.startTracking()
         locationService.initialize_route(routeID: routeId, userID: userID) // Initialize with the same ID
         startTime = Date()
@@ -40,12 +40,10 @@ class TrackingStateManager: ObservableObject {
         timer?.invalidate()
         timer = nil
         
-        // Capture the final elapsed time
         let finalTime = elapsedTime
         
-        // Call saveRoute first and wait for completion
         locationService.saveRoute(raw_userId: userId, time: finalTime, routeID: routeId) { [weak self] in
-            // Only reset everything after the save is complete
+
             guard let self = self else { return }
             self.elapsedTime = 0.0
             self.locationService.stopTracking()
@@ -54,9 +52,7 @@ class TrackingStateManager: ObservableObject {
     }
 }
 
-
 // MARK: - Map View
-// Modified MapView
 struct MapView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var locationService = LocationTrackingService.shared
@@ -66,78 +62,100 @@ struct MapView: View {
     @State private var capturedImage: UIImage?
     
     var body: some View {
-        let UUid: String = authManager.userId!
-        VStack {
-            Map(position: $cameraPosition) {
-                UserAnnotation()
-                
-                if !locationService.locations.isEmpty {
-                    MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
-                        .stroke(.blue, lineWidth: 3)
-                }
-            }
-            .mapControls {
-                MapCompass()
-                MapUserLocationButton()
-                MapPitchToggle()
-                MapScaleView()
-            }
-            
-            VStack {
-                Text(formatTimeInterval(trackingManager.elapsedTime))
-                    .font(.title2)
-                    .bold()
-                Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137))
-                    .font(.headline)
-            }
-            .padding()
-            
-            HStack {
-                Spacer()
-                Spacer(minLength: 80)
-                
-                Button(action: {
-                    if trackingManager.isTracking {
-                        print("Stopping Route")
-                        trackingManager.stopTracking(userId: UUid)
-                    } else {
-                        CLLocationManager().requestAlwaysAuthorization()
-                        let newRouteId = UUID() // Generate new route ID
-                        trackingManager.startTracking(routeId: newRouteId, userID: UUid) // Pass it to tracking manager
+        // Use optional binding instead of force-unwrapping (!)
+        guard let userId = authManager.userId else {
+            return AnyView(Text("Please log in to track routes.")
+                .foregroundColor(.white)
+                .font(.title2)
+                .padding()
+                .background(Color.black.edgesIgnoringSafeArea(.all)))
+        }
+
+        return AnyView(
+            ZStack {
+                Map(position: $cameraPosition) {
+                    UserAnnotation()
+                    if !locationService.locations.isEmpty {
+                        MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
+                            .stroke(.blue, lineWidth: 3)
+
                     }
-                }) {
-                    Text(trackingManager.isTracking ? "Stop Tracking" : "Start Tracking")
-                        .padding()
-                        .background(trackingManager.isTracking ? Color.red : Color.green)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
                 }
-                Spacer()
-                Button(action: {
-                    showCamera = true
-                }) {
-                    Image(systemName: "camera.circle.fill")
-                        .resizable()
-                        .frame(width: 30, height: 30)
-                        .foregroundColor(.white)
-                        .background(Color.blue.opacity(0.9))
-                        .clipShape(Circle())
+                .edgesIgnoringSafeArea(.all)
+
+                VStack {
+                    Spacer()
+
+                    VStack {
+                        Text(formatTimeInterval(trackingManager.elapsedTime))
+                            .font(.title2)
+                            .bold()
+                            .foregroundColor(.white)
+                        Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137))
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                    }
+                    .padding()
+                    .background(Color.black.opacity(0.6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    HStack {
+                        Spacer()
+
+                        Button(action: {
+                            if trackingManager.isTracking {
+                                print("Stopping Route")
+                                trackingManager.stopTracking(userId: userId)
+                            } else {
+                                CLLocationManager().requestAlwaysAuthorization()
+                                let newRouteId = UUID()
+                                trackingManager.startTracking(routeId: newRouteId, userID: UUid)
+                            }
+                        }) {
+                            Image(systemName: "car.fill")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .padding()
+                                .background(trackingManager.isTracking ? Color.red : Color.green)
+                                .foregroundColor(.white)
+                                .clipShape(Circle())
+                                .shadow(radius: 10)
+                        }
+
+                        Spacer()
+
+                        // Camera Button
+                        Button(action: {
+                            showCamera = true
+                        }) {
+                            Image(systemName: "camera.circle.fill")
+                                .resizable()
+                                .frame(width: 50, height: 50)
+                                .foregroundColor(.white)
+                                .background(Color.blue.opacity(0.9))
+                                .clipShape(Circle())
+                                .shadow(radius: 5)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(.bottom, 40)
                 }
-                Spacer()
             }
-        }
-        .onAppear {
-            CLLocationManager().requestWhenInUseAuthorization()
-            CLLocationManager().requestAlwaysAuthorization()
-        }
-        .sheet(isPresented: $showCamera, onDismiss: handleCameraDismiss){
-            CameraView(image: $capturedImage)
-        }
+            .background(Color.black.edgesIgnoringSafeArea(.all))
+            .onAppear {
+                CLLocationManager().requestWhenInUseAuthorization()
+                CLLocationManager().requestAlwaysAuthorization()
+            }
+            .sheet(isPresented: $showCamera, onDismiss: handleCameraDismiss) {
+                CameraView(image: $capturedImage)
+            }
+        )
     }
     
     private func handleCameraDismiss() {
         if let capturedImage = capturedImage,
-           let currentRouteId = trackingManager.currentRouteId { // Get the current route ID
+           let currentRouteId = trackingManager.currentRouteId {
             Task {
                 do {
                     let imageURL = try await uploadImageToS3(image: capturedImage,
