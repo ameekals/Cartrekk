@@ -71,51 +71,51 @@ class AuthenticationManager: ObservableObject {
     }
     
     func setUsername(_ username: String, completion: @escaping (Bool, String?) -> Void) {
-        guard let userId = userId,
-            let email = Auth.auth().currentUser?.email else { return }
-        
-        // Check if username is already taken
-        let db = Firestore.firestore()
-        db.collection("usernames").document(username).getDocument { [weak self] document, error in
-            if let document = document, document.exists {
-                completion(false, "Username already taken")
-                return
-            }
+            guard let userId = userId,
+                let email = Auth.auth().currentUser?.email else { return }
             
-            // If username is available, save it
-            db.collection("users").document(userId).setData(
-                [
-                "distance_used" : 0,
-                "email" : email,
-                "friends" : [],
-                "inventory" : [],
-                "profilePictureURL" : "",
-                "total_distance" : 0,
-                "username": username,
-                ],
-                merge: true) { error in
-                if let error = error {
-                    completion(false, error.localizedDescription)
+            // Check if username is already taken
+            let db = Firestore.firestore()
+            db.collection("usernames").document(username).getDocument { [weak self] document, error in
+                if let document = document, document.exists {
+                    completion(false, "Username already taken")
                     return
                 }
                 
-                // Create username reference
-                db.collection("usernames").document(username).setData([
-                    "userid": userId
-                ]) { error in
-                    DispatchQueue.main.async {
-                        if let error = error {
-                            completion(false, error.localizedDescription)
-                        } else {
-                            self?.username = username
-                            self?.needsUsername = false
-                            completion(true, nil)
+                // If username is available, save it
+                db.collection("users").document(userId).setData(
+                    [
+                    "distance_used" : 0,
+                    "email" : email,
+                    "friends" : [],
+                    "inventory" : [],
+                    "profilePictureURL" : "",
+                    "total_distance" : 0,
+                    "username": username,
+                    ],
+                    merge: true) { error in
+                    if let error = error {
+                        completion(false, error.localizedDescription)
+                        return
+                    }
+                    
+                    // Create username reference
+                    db.collection("usernames").document(username).setData([
+                        "userid": userId
+                    ]) { error in
+                        DispatchQueue.main.async {
+                            if let error = error {
+                                completion(false, error.localizedDescription)
+                            } else {
+                                self?.username = username
+                                self?.needsUsername = false
+                                completion(true, nil)
+                            }
                         }
                     }
                 }
             }
         }
-    }
 }
 
 // MARK: - Login View
@@ -339,8 +339,10 @@ struct CameraView: UIViewControllerRepresentable {
 
 // MARK: - Profile View
 
-struct ProfileView: View {
+
+View: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    @ObservedObject var garageManager = GarageManager.shared
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showPastRoutes = false
     
@@ -437,6 +439,10 @@ struct PastRoutesView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = ProfileViewModel()
     
+    var totalDistanceTraveled: Double {
+        viewModel.routes.reduce(0) { $0 + $1.distance }
+    }
+
     var body: some View {
         VStack {
             Text("Past Routes")
@@ -459,10 +465,23 @@ struct PastRoutesView: View {
             Spacer()
         }
         .background(Color.black.edgesIgnoringSafeArea(.all))
+        .padding()
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                NavigationLink(destination: GarageView()) {
+                    Text("Garage")
+                        .font(.headline)
+                        .foregroundColor(.blue)
+                }
+            }
+        }
         .onAppear {
             if let userId = authManager.userId {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
+                    // Use this when tables per user are added
+                    garageManager.fetchTotalMiles(userId: userId)
+//                    garageManager.fetchTotalMiles(userId: "userid_1")
                 }
             }
         }

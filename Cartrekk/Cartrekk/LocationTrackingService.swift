@@ -43,8 +43,18 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
         locationManager.startUpdatingLocation()
     }
     
-    func stopTracking() {
+    func stopTracking(userId: String) {
         isTracking = false
+        FirestoreManager.shared.incrementUserTotalDistance(
+            userId: userId,
+            additionalDistance: totalDistance * 0.000621371
+        ) { error in
+            if let error = error {
+                print("Failed to update total distance: (error)")
+            } else {
+                print("Successfully updated total distance")
+            }
+        }
         totalDistance = 0.0
         print("resetting distance")
         locationManager.stopUpdatingLocation()
