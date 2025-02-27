@@ -362,6 +362,13 @@ struct ProfileView: View {
                     .padding(.top, 10)
 
                 VStack(spacing: 15) {
+                    Text("Total Miles: \(String(format: "%.2f", garageManager.totalMiles)) mi")
+                        .font(.headline)
+
+                    Text("Usable Points: \(String(format: "%.2f", garageManager.usableMiles))")
+                        .font(.headline)
+                        .foregroundColor(garageManager.usableMiles >= 100 ? .green : .red)
+                    
                     NavigationLink(destination: PastRoutesView()) {
                         ProfileButton(title: "Past Routes", icon: "map")
                     }
