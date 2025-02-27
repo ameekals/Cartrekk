@@ -338,9 +338,7 @@ struct CameraView: UIViewControllerRepresentable {
 
 
 // MARK: - Profile View
-
-
-View: View {
+struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @ObservedObject var garageManager = GarageManager.shared
     @StateObject private var viewModel = ProfileViewModel()
@@ -437,6 +435,7 @@ struct ProfileButton: View {
 // MARK: - Past Routes View
 struct PastRoutesView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    @ObservedObject var garageManager = GarageManager.shared
     @StateObject private var viewModel = ProfileViewModel()
     
     var totalDistanceTraveled: Double {
