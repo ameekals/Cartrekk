@@ -23,10 +23,20 @@ class ExploreViewModel: ObservableObject {
                         photos: route.routeImages!,
                         likes: route.likes,
                         comments: [], // You might want to load comments separately
-                        polyline: route.polyline
+                        polyline: route.polyline,
+                        userid: route.userId,
+                        username: route.userId
                     )
                 }
                 
+                for (index, post) in posts.enumerated() {
+                    self.db.fetchUsernameSync(userId: post.userid) { username in
+                        if let username = username {
+                            self.posts[index].username = username
+                        }
+                    }
+                }
+
                 continuation.resume(returning: posts)
             }
         }
@@ -40,7 +50,6 @@ class ExploreViewModel: ObservableObject {
                 }
             }
         }
-
     }
     
     @MainActor
@@ -64,11 +73,64 @@ class ExploreViewModel: ObservableObject {
         }
     }
 
-    func addComment(postId: String, userId: String, username: String, text: String) {
-        let newComment = Comment(id: UUID().uuidString, userId: userId, username: username, text: text, timestamp: Date())
-        if let index = posts.firstIndex(where: { $0.id == postId }) {
-            posts[index].comments.append(newComment)
-            objectWillChange.send()
+    @MainActor
+    func addComment(postId: String, userId: String, username: String, text: String) async {
+        await withCheckedContinuation { continuation in
+            db.addCommentToRoute(routeId: postId, userId: userId, text: text) { error in
+                if let error = error {
+                    print("Error adding comment: \(error)")
+                } else {
+                    // Only update the UI if the database write was successful
+                    if let index = self.posts.firstIndex(where: { $0.id == postId }) {
+                        let newComment = Comment(
+                            id: UUID().uuidString,  // The Firebase document ID would be better here
+                            userId: userId,
+                            username: username,
+                            text: text,
+                            timestamp: Date()
+                        )
+                        self.posts[index].comments.append(newComment)
+                        self.objectWillChange.send()
+                    }
+                }
+                continuation.resume()
+            }
         }
     }
+    
+    @MainActor
+    func updateLikesForPost(postId: String) {
+        Task {
+            await withCheckedContinuation { continuation in
+                db.getLikeCount(routeId: postId) { likeCount in
+                    if let index = self.posts.firstIndex(where: { $0.id == postId }) {
+                        self.posts[index].likes = likeCount
+                        self.objectWillChange.send()
+                    }
+                    continuation.resume()
+                }
+            }
+        }
+    }
+        
+    @MainActor
+    func likePost(postId: String, userId: String) async {
+        await withCheckedContinuation { continuation in
+            db.handleLike(routeId: postId, userId: userId) { error in
+                if let error = error {
+                    print("Error handling like: \(error)")
+                } else {
+                    // Update like count after successful Firebase operation
+                    self.updateLikesForPost(postId: postId)
+                }
+                continuation.resume()
+            }
+        }
+    }
+    
+    func checkUserLikeStatus(postId: String, userId: String, completion: @escaping (Bool) -> Void) {
+        db.getUserLikeStatus(routeId: postId, userId: userId, completion: completion)
+    }
+
+
 }

@@ -7,6 +7,7 @@ struct PostView: View {
     @State private var liked: Bool
     @State private var newComment = ""
     @State private var showCommentsSheet = false
+    @EnvironmentObject var authManager: AuthenticationManager
     
     var post: Post
 
@@ -18,6 +19,15 @@ struct PostView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            
+            HStack {
+                Text(post.username)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                Spacer()
+            }
+            .padding(.horizontal)
+
             // Swipeable image carousel
             TabView {
                 RoutePreviewMap(post: post)
@@ -42,8 +52,10 @@ struct PostView: View {
             // Like & Comment Section
             HStack {
                 Button(action: {
-                    liked.toggle()
-                    viewModel.likePost(postId: post.id)
+                    Task {
+                        await viewModel.likePost(postId: post.id, userId: authManager.userId ?? "")
+                        liked.toggle()
+                    }
                 }) {
                     Image(systemName: liked ? "heart.fill" : "heart")
                         .foregroundColor(liked ? .red : .gray)
@@ -77,8 +89,10 @@ struct PostView: View {
                     .textFieldStyle(RoundedBorderTextFieldStyle())
 
                 Button(action: {
-                    viewModel.addComment(postId: post.id, userId: "currentUser", username: "You", text: newComment)
-                    newComment = ""
+                    Task {
+                        await viewModel.addComment(postId: post.id, userId: authManager.userId ?? "", username: authManager.username ?? "", text: newComment)
+                        newComment = ""
+                    }
                 }) {
                     Text("Post")
                         .fontWeight(.bold)
@@ -88,6 +102,15 @@ struct PostView: View {
             .padding(.horizontal)
         }
         .padding(.vertical, 8)
+        .onAppear {
+            // Check if user liked this post when view appears
+            viewModel.checkUserLikeStatus(
+                postId: post.id,
+                userId: authManager.userId ?? ""
+            ) { isLiked in
+                liked = isLiked
+            }
+        }
         .sheet(isPresented: $showCommentsSheet) {
             CommentsSheet(post: post, viewModel: viewModel, showCommentsSheet: $showCommentsSheet)
         }
@@ -99,20 +122,57 @@ struct CommentsSheet: View {
     var post: Post
     @ObservedObject var viewModel: ExploreViewModel
     @Binding var showCommentsSheet: Bool
+    @State private var newComment: String = ""
+    @EnvironmentObject var authManager: AuthenticationManager
+    
+    func handleAddComment() async {
+        if !newComment.isEmpty {
+            await viewModel.addComment(
+                postId: post.id,
+                userId: authManager.userId ?? "",
+                username: authManager.username ?? "",
+                text: newComment
+            )
+            newComment = ""
+        }
+    }
     
     var body: some View {
         NavigationView {
-            List {
-                ForEach(post.comments) { comment in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(comment.username)
-                            .fontWeight(.bold)
-                        Text(comment.text)
-                        Text(comment.timestamp, style: .relative)
-                            .foregroundColor(.gray)
+            VStack {
+                List {
+                    ForEach(post.comments) { comment in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(comment.username)
+                                .fontWeight(.bold)
+                            Text(comment.text)
+                            Text(comment.timestamp, style: .relative)
+                                .foregroundColor(.gray)
+                        }
+                        .font(.caption)
                     }
-                    .font(.caption)
                 }
+                
+                // Add comment input field at the bottom
+                HStack {
+                    TextField("Add a comment...", text: $newComment)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .padding(.horizontal)
+                    
+                    Button(action: {
+                        Task {
+                            await handleAddComment()
+                        }
+                    }) {
+                        Text("Post")
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
+                    }
+                    .padding(.trailing)
+                    .disabled(newComment.isEmpty)
+                }
+                .padding(.vertical, 8)
+                .background(Color(.systemBackground))
             }
             .navigationTitle("Comments")
             .toolbar {

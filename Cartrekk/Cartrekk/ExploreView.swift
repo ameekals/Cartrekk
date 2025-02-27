@@ -11,19 +11,20 @@ struct ExploreView: View {
     @StateObject var viewModel = ExploreViewModel()
 
     var body: some View {
-            NavigationView {
-                List {
-                    ForEach(viewModel.posts) { post in
-                        PostView(post: post, viewModel: viewModel)
-                            .listRowBackground(Color.clear)
-                            .buttonStyle(PlainButtonStyle())
-                    }
-                }
-                .navigationBarTitle("Explore")
-                .task {
-                    await viewModel.loadPublicPosts()
+        NavigationView {
+            List {
+                ForEach(viewModel.posts) { post in
+                    PostView(post: post, viewModel: viewModel)
+                        .listRowBackground(Color.clear)
+                        .buttonStyle(PlainButtonStyle())
                 }
             }
+            .navigationBarTitle("Explore")
+            .task {
+                await viewModel.loadPublicPosts()
+            }
         }
+        .background(Color.black.edgesIgnoringSafeArea(.all))
+    }
 }
 

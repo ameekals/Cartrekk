@@ -28,13 +28,10 @@ let secretKey = ProcessInfo.processInfo.environment["AWS_SECRET_ACCESS_KEY"]
 func getBucketNames() async throws -> [String] {
     do {
         // Get an S3Client with which to access Amazon S3.
-        print("trying config")
         
         let configuration = try await S3Client.S3ClientConfiguration()
         configuration.region = "us-west-1" // Uncomment this to set the region programmatically.
-        print("config done")
         let client = S3Client(config: configuration)
-        print("client made")
 
         // Use "Paginated" to get all the buckets.
         // This lets the SDK handle the 'continuationToken' in "ListBucketsOutput".
@@ -45,19 +42,13 @@ func getBucketNames() async throws -> [String] {
 
         // Get the bucket names.
         var bucketNames: [String] = []
-        print("trying print pages")
         print(pages)
-        print("passed")
         do {
-            print("tryyop")
             for try await page in pages {
-                print("trying1")
                 guard let buckets = page.buckets else {
-                    print("111")
                     print("Error: no buckets returned.")
                     continue
                 }
-                print("2")
                 for bucket in buckets {
                     bucketNames.append(bucket.name ?? "<unknown>")
                 }
@@ -65,7 +56,6 @@ func getBucketNames() async throws -> [String] {
 
             return bucketNames
         } catch {
-            print("YOYO")
             print("ERROR: listBuckets:", dump(error))
             throw error
         }
@@ -76,7 +66,6 @@ func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) asy
     guard let image = image, let imageData = image.jpegData(compressionQuality: 0.5) else {
         throw NSError(domain: "ImageConversionError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert UIImage to Data"])
     }
-    print("bruh its happening")
     // Configure the AWS S3 client
     let configuration = try await S3Client.S3ClientConfiguration()
     configuration.region = "us-west-1" // Set your region
@@ -88,7 +77,6 @@ func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) asy
     
     let imageName = "\(UUID().uuidString).jpg"
     
-    print("bruh its happening1")
     // Create the putObject request
     let putObjectInput = PutObjectInput(
         
@@ -101,15 +89,13 @@ func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) asy
         
          // Adjust based on your image type
     )
-    print("bruh its happening3")
     // Upload the image to S3
     do {
         // Attempt to upload the image
         let _ = try await s3.putObject(input: putObjectInput)
-        print("Image uploaded successfullyhh!")
     } catch {
         // Catch any errors and handle them
-        print("Upload failjjjjjjjed: \(error.localizedDescription)")
+        return "NULL"
     }
     
               
@@ -121,6 +107,31 @@ func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) asy
     return imageURL
 }
 
+func getImageFromS3(imageURL: String) async throws -> UIImage {
+    // Validate the URL
+    guard let url = URL(string: imageURL) else {
+        throw NSError(domain: "InvalidURLError", code: -1, userInfo: [NSLocalizedDescriptionKey: "The provided URL is invalid"])
+    }
+
+    do {
+        // Fetch the image data
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        // Check for a valid HTTP response
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw NSError(domain: "NetworkError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to fetch image from S3"])
+        }
+
+        // Convert data to UIImage
+        guard let image = UIImage(data: data) else {
+            throw NSError(domain: "ImageConversionError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert data to UIImage"])
+        }
+
+        return image
+    } catch {
+        throw error // Forward any network or data errors
+    }
+}
 /*
 private init() async {
     /*let accessKeyTop = ProcessInfo.processInfo.environment["AWS_ACCESS_KEY_ID"] ?? ""

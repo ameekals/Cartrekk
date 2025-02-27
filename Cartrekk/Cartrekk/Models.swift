@@ -15,6 +15,8 @@ struct Post: Identifiable {
     var likes: Int
     var comments: [Comment]
     var polyline: String
+    var userid: String
+    var username: String
 }
 
 struct Route: Identifiable, Codable {
@@ -54,3 +56,5 @@ struct Comment: Identifiable {
     let text: String
     let timestamp: Date
 }
+
+

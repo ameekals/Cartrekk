@@ -3,7 +3,7 @@
 //  Cartrekk
 //
 //  Created by Ameek Singh on 1/18/25.
-//
+// test
 import SwiftUI
 import MapKit
 import CoreLocation
@@ -26,13 +26,16 @@ struct ContentView: View {
             if authManager.needsUsername {
                 UsernameSetupView()
                     .environmentObject(authManager)
+                    .preferredColorScheme(.dark)
             } else {
                 MainAppView()
                     .environmentObject(authManager)
+                    .preferredColorScheme(.dark)
             }
         } else {
             LoginView(email: $email, password: $password)
                 .environmentObject(authManager)
+                .preferredColorScheme(.dark)
         }
     }
 }
@@ -127,6 +130,7 @@ struct LoginView: View {
             Text("Cartrekk")
                 .font(.largeTitle)
                 .bold()
+                .foregroundColor(.white)
 
             TextField("Email", text: $email)
                 .textFieldStyle(RoundedBorderTextFieldStyle())
@@ -166,6 +170,7 @@ struct LoginView: View {
             .padding(.horizontal)
         }
         .padding()
+        .background(Color.black.edgesIgnoringSafeArea(.all))
     }
 
     func loginWithEmail() {
@@ -205,7 +210,6 @@ struct LoginView: View {
                 if let error = error {
                     print("Firebase authentication error: \(error.localizedDescription)")
                 }
-                // AuthenticationManager will automatically update state
             }
         }
     }
@@ -266,73 +270,30 @@ struct MainAppView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     
     var body: some View {
-        Text("Welcome! Your user ID is: \(authManager.userId ?? "Not found")")
-        Text("Your username is: \(authManager.username ?? "Not found")")
-        
-        NavigationView {
-            VStack(spacing: 20) {
-                Text("Cartrekk")
-                    .font(.largeTitle)
-                    .bold()
-                
-                NavigationLink(destination: MapView()) {
-                    Text("START")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+        TabView {
+            MapView()
+                .tabItem {
+                    Image(systemName: "map")
+                    Text("Map")
                 }
-                .padding(.horizontal)
-                
-                NavigationLink(destination: ProfileView()) {
-                    Text("User Profile")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+            
+            ProfileView()
+                .tabItem {
+                    Image(systemName: "person.circle")
+                    Text("Profile")
                 }
-                .padding(.horizontal)
-                NavigationLink(destination: ExploreView()) {
+            
+            ExploreView()
+                .tabItem {
+                    Image(systemName: "globe")
                     Text("Explore")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
                 }
-                .padding(.horizontal)
-                
-                Button(action: {
-                    do {
-                        try Auth.auth().signOut()
-                        authManager.isLoggedIn = false
-                        authManager.userId = nil
-                    } catch {
-                        print("Error signing out: \(error.localizedDescription)")
-                    }
-                }) {
-                    Text("Log Out")
-                        .font(.subheadline)  // Changed from .title2 to .subheadline
-                        .padding(.vertical, 8)  // Reduced vertical padding
-                        .padding(.horizontal, 20)  // Added horizontal padding
-                        .background(Color.red)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)  // Slightly reduced corner radius
-                }
-                .padding(.top, 20)
-               
-           }
-           .padding()
-           .navigationBarHidden(true)
-       }
-   }
+        }
+        .accentColor(.blue)
+        .background(Color.black.edgesIgnoringSafeArea(.all))
+        .preferredColorScheme(.dark)
+    }
 }
-
 
 // MARK: - Camera View
 
@@ -378,9 +339,104 @@ struct CameraView: UIViewControllerRepresentable {
 
 // MARK: - Profile View
 
-struct ProfileView: View {
+
+View: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @ObservedObject var garageManager = GarageManager.shared
+    @StateObject private var viewModel = ProfileViewModel()
+    @State private var showPastRoutes = false
+    
+    var body: some View {
+        NavigationView {
+            VStack {
+                // Profile Image
+                Image(systemName: "person.crop.circle.fill")
+                    .resizable()
+                    .frame(width: 100, height: 100)
+                    .foregroundColor(.gray)
+                    .padding(.top, 40)
+                
+                // Username
+                Text(authManager.username ?? "Not found")
+                    .font(.title)
+                    .bold()
+                    .foregroundColor(.white)
+                    .padding(.top, 10)
+
+                VStack(spacing: 15) {
+                    NavigationLink(destination: PastRoutesView()) {
+                        ProfileButton(title: "Past Routes", icon: "map")
+                    }
+                    
+                    ProfileButton(title: "Settings", icon: "gearshape")
+                    
+                    ProfileButton(title: "Support", icon: "questionmark.circle")
+                    
+                    Button(action: logout) {
+                        ProfileButton(title: "Log Out", icon: "arrow.backward", color: .red)
+                    }
+                }
+                .padding(.top, 30)
+                
+                Spacer()
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color.black.edgesIgnoringSafeArea(.all))
+            .navigationBarHidden(true)
+        }
+        .onAppear {
+            if let userId = authManager.userId {
+                Task {
+                    await viewModel.loadRoutes(userId: userId)
+                }
+            }
+        }
+    }
+    
+    private func logout() {
+        do {
+            try Auth.auth().signOut()
+            authManager.isLoggedIn = false
+            authManager.userId = nil
+        } catch {
+            print("Error signing out: \(error.localizedDescription)")
+        }
+    }
+}
+
+// MARK: - Profile Button Component
+struct ProfileButton: View {
+    var title: String
+    var icon: String
+    var color: Color = .blue
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.white)
+                .imageScale(.large)
+            
+            Text(title)
+                .font(.title3)
+                .bold()
+                .foregroundColor(.white)
+            
+            Spacer()
+            
+            Image(systemName: "chevron.right")
+                .foregroundColor(.gray)
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(color.opacity(0.2))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal)
+    }
+}
+
+// MARK: - Past Routes View
+struct PastRoutesView: View {
+    @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var viewModel = ProfileViewModel()
     
     var totalDistanceTraveled: Double {
@@ -389,51 +445,27 @@ struct ProfileView: View {
 
     var body: some View {
         VStack {
-            Text("Profile")
+            Text("Past Routes")
                 .font(.largeTitle)
                 .bold()
-                .padding()
-
-            Text("Total Miles: \(garageManager.totalMiles, specifier: "%.2f") mi")
-                .font(.headline)
-
-            Text("Usable Points: \(garageManager.usableMiles, specifier: "%.2f")")
-                .font(.headline)
-                .foregroundColor(garageManager.usableMiles >= 100 ? .green : .red)
-
+                .foregroundColor(.white)
+                .padding(.top, 20)
             
-            Text("Hello, \(authManager.username ?? "Not found")").bold()
-                .padding()
-            
-            // If we want to keep the blue button
-//            NavigationLink(destination: GarageView()) {
-//                Text("Garage")
-//                    .font(.title2)
-//                    .padding()
-//                    .frame(maxWidth: .infinity)
-//                    .background(Color.blue)
-//                    .foregroundColor(.white)
-//                    .cornerRadius(10)
-//            }
-//            .padding(.horizontal)
-
-            List(viewModel.routes, id: \.docID) { route in
-                RouteRow(route: route) {
-                    Task {
-                        if await viewModel.deleteRoute(routeId: route.docID) {
-                            if let userId = authManager.userId {
-                                await viewModel.loadRoutes(userId: userId)
-                                // Use this when tables per user are added
-                                garageManager.fetchTotalMiles(userId: userId)
-//                                garageManager.fetchTotalMiles(userId: "userid_1")
-                            }
-                        }
-                    }
+            if viewModel.routes.isEmpty {
+                Text("No past routes available.")
+                    .foregroundColor(.gray)
+                    .padding()
+            } else {
+                List(viewModel.routes, id: \.docID) { route in
+                    RouteRow(route: route)
                 }
+                .background(Color.black)
             }
+            
+            Spacer()
         }
+        .background(Color.black.edgesIgnoringSafeArea(.all))
         .padding()
-        .navigationTitle("Profile")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 NavigationLink(destination: GarageView()) {
@@ -456,12 +488,21 @@ struct ProfileView: View {
     }
 }
 
-
 // MARK: - Route Row
 struct RouteRow: View {
     let route: FirestoreManager.fb_Route
+    @StateObject private var viewModel = ProfileViewModel()
+    @EnvironmentObject var authManager: AuthenticationManager
+    @State private var isCurrentlyPublic: Bool  // Add state to track public status
+    
+    init(route: FirestoreManager.fb_Route) {
+        self.route = route
+        // Initialize the state with the route's public status
+        _isCurrentlyPublic = State(initialValue: route.isPublic)
+    }
     @State private var showDeleteConfirmation = false
-    var onDelete: () -> Void
+    @State private var showPostConfirmation = false
+    @State private var isLiked = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -473,8 +514,7 @@ struct RouteRow: View {
                 }
                 
                 Spacer()
-            
-                // Isolated delete button
+                
                 Button(action: {
                     showDeleteConfirmation = true
                 }) {
@@ -488,11 +528,15 @@ struct RouteRow: View {
                     titleVisibility: .visible
                 ) {
                     Button("Delete", role: .destructive) {
-                        onDelete()
+                        Task {
+                            if await viewModel.deleteRoute(routeId: route.docID) {
+                                if let userId = authManager.userId {
+                                    await viewModel.loadRoutes(userId: userId)
+                                }
+                            }
+                        }
                     }
                     Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("Are you sure you want to delete this route? This action cannot be undone.")
                 }
             }
             
@@ -511,11 +555,11 @@ struct RouteRow: View {
             if let locations = polyline.locations, !locations.isEmpty {
                 Map {
                     Marker("Start",
-                        coordinate: locations.first!.coordinate)
+                           coordinate: locations.first!.coordinate)
                     .tint(.green)
                     
                     Marker("End",
-                        coordinate: locations.last!.coordinate)
+                           coordinate: locations.last!.coordinate)
                     .tint(.red)
                     
                     MapPolyline(coordinates: locations.map { $0.coordinate })
@@ -532,8 +576,47 @@ struct RouteRow: View {
                 .frame(height: 200)
                 .cornerRadius(10)
             }
+            HStack(spacing: 20) {
+                // Likes display
+                HStack {
+                    Image(systemName: "heart")
+                        .foregroundColor(.red)
+                    Text("\(route.likes)")
+                        .foregroundColor(.gray)
+                }
+                
+                // Public/Private toggle
+                Button(action: {
+                    print("Button tapped") // Debug print
+                    showPostConfirmation = true
+                }) {
+                    HStack {
+                        Image(systemName: isCurrentlyPublic ? "globe" : "globe.slash")
+                        Text(isCurrentlyPublic ? "Public" : "Private")
+                    }
+                    .foregroundColor(isCurrentlyPublic ? .blue : .gray)
+                }
+                .buttonStyle(.borderless)
+                .confirmationDialog(
+                    isCurrentlyPublic ? "Make Private" : "Make Public",
+                    isPresented: $showPostConfirmation
+                ) {
+                    Button(isCurrentlyPublic ? "Make Private" : "Make Public") {
+                        // Toggle the UI state immediately
+                        isCurrentlyPublic.toggle()
+                        
+                        // Update Firestore in background
+                        Task {
+                            await viewModel.togglePublicStatus(routeId: route.docID)
+                        }
+                    }
+                    Button("Cancel", role: .cancel) {
+                        print("Cancel tapped") // Debug print
+                    }
+                }
+            }
+            .padding(.vertical, 8)
         }
-        .padding(.vertical, 8)
     }
     
     // Keep your existing helper functions
@@ -575,6 +658,23 @@ class ProfileViewModel: ObservableObject {
             db.deleteRoute(routeId: routeId) { success in
                 continuation.resume(returning: success)
             }
+        }
+    }
+    func togglePublicStatus(routeId: String) async {
+        print("Attempting to toggle in Firestore")
+        let db = Firestore.firestore()
+        do {
+            // First get current status
+            let doc = try await db.collection("routes").document(routeId).getDocument()
+            let isCurrentlyPublic = doc.data()?["public"] as? Bool ?? false
+            
+            // Toggle it
+            try await db.collection("routes").document(routeId).updateData([
+                "public": !isCurrentlyPublic
+            ])
+            print("Successfully toggled in Firestore from \(isCurrentlyPublic) to \(!isCurrentlyPublic)")
+        } catch {
+            print("Error toggling public status: \(error)")
         }
     }
 }
