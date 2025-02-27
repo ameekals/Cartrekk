@@ -14,6 +14,7 @@ struct GarageView: View {
     @State private var scene: SCNScene? = nil
     @State private var showUnlockAlert = false
     @State private var unlockedCar: String? = nil
+    @EnvironmentObject var authManager: AuthenticationManager
 
     var body: some View {
         VStack {
@@ -28,7 +29,7 @@ struct GarageView: View {
             }
 
             // Unlock Button
-            Button(action: unlockCar) {
+            Button(action: {unlockCar(userId: authManager.userId!)}) {
                 Text("Unlock Car (\(garageManager.usableMiles, specifier: "%.0f") Points)")
                     .font(.title2)
                     .padding()
@@ -75,8 +76,8 @@ struct GarageView: View {
         .navigationTitle("Garage")
     }
 
-    private func unlockCar() {
-        if let newCar = garageManager.unlockCar() {
+    private func unlockCar(userId: String) {
+        if let newCar = garageManager.unlockCar(userId: userId) {
             unlockedCar = newCar
             showUnlockAlert = true
             loadCarModel()

@@ -37,18 +37,35 @@ class GarageManager: ObservableObject {
                 print("Failed to fetch total miles.")
                 return
             }
-            DispatchQueue.main.async {
-                self.totalMiles = totalDistance
-                self.usableMiles = totalDistance // Initially set usable miles to total miles
-                print("Fetched total miles: \(totalDistance)")
+            FirestoreManager.shared.fetchUsableDistanceForUser(userId: userId) { [weak self] used_distance in
+                guard let self = self, let used_distance = used_distance else {
+                    print("Failed to fetch total miles.")
+                    return
+                }
+                DispatchQueue.main.async {
+                    self.totalMiles = totalDistance
+                    self.usableMiles = totalDistance - used_distance // Initially set usable miles to total miles
+                    print("Fetched total miles: \(totalDistance)")
+                }
             }
         }
     }
     
-    func unlockCar() -> String? {
-        guard usableMiles >= 100 else { return "Not enough miles to unlock a car!" }
+    func unlockCar(userId: String) -> String? {
+        let minimum_miles_to_unlock = 1.0
+        guard usableMiles >= minimum_miles_to_unlock else { return "Not enough miles to unlock a car!" }
 
-        usableMiles -= 100
+        usableMiles -= minimum_miles_to_unlock
+        FirestoreManager.shared.incrementUserDistanceUsed(
+            userId: userId,
+            distanceUsed: minimum_miles_to_unlock
+        ) { error in
+            if let error = error {
+                print("Failed to update total distance: (error)")
+            } else {
+                print("Successfully updated total distance")
+            }
+        }
         let rarity = rollForRarity()
 //        guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else { return nil }
         guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else {

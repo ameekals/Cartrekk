@@ -49,6 +49,62 @@ class FirestoreManager{
         }
     }
     
+    func incrementUserTotalDistance(userId: String, additionalDistance: Double, completion: @escaping (Error?) -> Void) {
+        let userRef = db.collection("users").document(userId)
+        
+        userRef.updateData([
+            "total_distance": FieldValue.increment(additionalDistance)
+        ]) { error in
+            if let error = error {
+                print("Error updating total distance: \(error)")
+                
+                // Check if the field doesn't exist yet and needs to be created
+                if (error as NSError).domain == FirestoreErrorDomain &&
+                   (error as NSError).code == FirestoreErrorCode.notFound.rawValue {
+                    
+                    // Field doesn't exist, so set it instead of incrementing
+                    userRef.setData([
+                        "total_distance": additionalDistance
+                    ], merge: true) { error in
+                        completion(error)
+                    }
+                } else {
+                    completion(error)
+                }
+            } else {
+                completion(nil)
+            }
+        }
+    }
+    
+    func incrementUserDistanceUsed(userId: String, distanceUsed: Double, completion: @escaping (Error?) -> Void) {
+        let userRef = db.collection("users").document(userId)
+        
+        userRef.updateData([
+            "distance_used": FieldValue.increment(distanceUsed)
+        ]) { error in
+            if let error = error {
+                print("Error updating distance used: \(error)")
+                
+                // Check if the field doesn't exist yet and needs to be created
+                if (error as NSError).domain == FirestoreErrorDomain &&
+                   (error as NSError).code == FirestoreErrorCode.notFound.rawValue {
+                    
+                    // Field doesn't exist, so set it instead of incrementing
+                    userRef.setData([
+                        "distance_used": distanceUsed
+                    ], merge: true) { error in
+                        completion(error)
+                    }
+                } else {
+                    completion(error)
+                }
+            } else {
+                completion(nil)
+            }
+        }
+    }
+    
     func fetchTotalDistanceForUser(userId: String, completion: @escaping (Double?) -> Void) {
         let userRef = db.collection("users").document(userId) // Reference to the user document
 
@@ -68,6 +124,28 @@ class FirestoreManager{
             // Extract total_distance from the user's document
             let totalDistance = document.data()?["total_distance"] as? Double ?? 0.0
             completion(totalDistance)
+        }
+    }
+    
+    func fetchUsableDistanceForUser(userId: String, completion: @escaping (Double?) -> Void) {
+        let userRef = db.collection("users").document(userId) // Reference to the user document
+
+        userRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error fetching total distance: \(error)")
+                completion(nil)
+                return
+            }
+
+            guard let document = document, document.exists else {
+                print("User document not found for userId: \(userId)")
+                completion(nil)
+                return
+            }
+
+            // Extract total_distance from the user's document
+            let usableDistance = document.data()?["distance_used"] as? Double ?? 0.0
+            completion(usableDistance)
         }
     }
     

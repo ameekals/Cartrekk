@@ -48,7 +48,7 @@ class TrackingStateManager: ObservableObject {
             // Only reset everything after the save is complete
             guard let self = self else { return }
             self.elapsedTime = 0.0
-            self.locationService.stopTracking()
+            self.locationService.stopTracking(userId: userId)
             self.currentRouteId = nil
         }
     }

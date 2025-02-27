@@ -68,42 +68,51 @@ class AuthenticationManager: ObservableObject {
     }
     
     func setUsername(_ username: String, completion: @escaping (Bool, String?) -> Void) {
-        guard let userId = userId else { return }
-        
-        // Check if username is already taken
-        let db = Firestore.firestore()
-        db.collection("usernames").document(username).getDocument { [weak self] document, error in
-            if let document = document, document.exists {
-                completion(false, "Username already taken")
-                return
-            }
+            guard let userId = userId,
+                let email = Auth.auth().currentUser?.email else { return }
             
-            // If username is available, save it
-            db.collection("users").document(userId).setData([
-                "username": username
-            ], merge: true) { error in
-                if let error = error {
-                    completion(false, error.localizedDescription)
+            // Check if username is already taken
+            let db = Firestore.firestore()
+            db.collection("usernames").document(username).getDocument { [weak self] document, error in
+                if let document = document, document.exists {
+                    completion(false, "Username already taken")
                     return
                 }
                 
-                // Create username reference
-                db.collection("usernames").document(username).setData([
-                    "userid": userId
-                ]) { error in
-                    DispatchQueue.main.async {
-                        if let error = error {
-                            completion(false, error.localizedDescription)
-                        } else {
-                            self?.username = username
-                            self?.needsUsername = false
-                            completion(true, nil)
+                // If username is available, save it
+                db.collection("users").document(userId).setData(
+                    [
+                    "distance_used" : 0,
+                    "email" : email,
+                    "friends" : [],
+                    "inventory" : [],
+                    "profilePictureURL" : "",
+                    "total_distance" : 0,
+                    "username": username,
+                    ],
+                    merge: true) { error in
+                    if let error = error {
+                        completion(false, error.localizedDescription)
+                        return
+                    }
+                    
+                    // Create username reference
+                    db.collection("usernames").document(username).setData([
+                        "userid": userId
+                    ]) { error in
+                        DispatchQueue.main.async {
+                            if let error = error {
+                                completion(false, error.localizedDescription)
+                            } else {
+                                self?.username = username
+                                self?.needsUsername = false
+                                completion(true, nil)
+                            }
                         }
                     }
                 }
             }
         }
-    }
 }
 
 // MARK: - Login View
@@ -415,8 +424,8 @@ struct ProfileView: View {
                             if let userId = authManager.userId {
                                 await viewModel.loadRoutes(userId: userId)
                                 // Use this when tables per user are added
-//                                garageManager.fetchTotalMiles(userId: userId)
-                                garageManager.fetchTotalMiles(userId: "userid_1")
+                                garageManager.fetchTotalMiles(userId: userId)
+//                                garageManager.fetchTotalMiles(userId: "userid_1")
                             }
                         }
                     }
@@ -439,8 +448,8 @@ struct ProfileView: View {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
                     // Use this when tables per user are added
-//                    garageManager.fetchTotalMiles(userId: userId)
-                    garageManager.fetchTotalMiles(userId: "userid_1")
+                    garageManager.fetchTotalMiles(userId: userId)
+//                    garageManager.fetchTotalMiles(userId: "userid_1")
                 }
             }
         }
