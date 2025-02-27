@@ -109,7 +109,7 @@ struct MapView: View {
                             } else {
                                 CLLocationManager().requestAlwaysAuthorization()
                                 let newRouteId = UUID()
-                                trackingManager.startTracking(routeId: newRouteId, userID: UUid)
+                                trackingManager.startTracking(routeId: newRouteId, userID: userId)
                             }
                         }) {
                             Image(systemName: "car.fill")
