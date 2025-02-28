@@ -84,7 +84,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     }
     
     // MARK: - Route Data Management
-    func saveRoute(raw_userId: String, time: TimeInterval, routeID: UUID, completion: @escaping () -> Void) {
+    func saveRoute(raw_userId: String, time: TimeInterval, routeID: UUID, routeName: String, routeDescription: String, completion: @escaping () -> Void) {
         let routeId = routeID.uuidString
         
         FirestoreManager.shared.db.collection("routes").document(routeId).getDocument { [weak self] (document, error) in
@@ -113,7 +113,9 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
                 polyline: encodedPolyline,
                 isPublic: isPublic,
                 routeImages: existingImages,
-                userId: userId
+                userId: userId,
+                routeName: routeName,
+                routeDescription: routeDescription
             ) { [weak self] in
                 completion()  // Call completion after save is done
             }
@@ -130,7 +132,9 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
             polyline: "",
             isPublic: false,
             routeImages: nil,
-            userId: userID
+            userId: userID,
+            routeName: "",
+            routeDescription: ""
         ) {
 
         }

@@ -149,7 +149,7 @@ class FirestoreManager{
     }
     
     // 🔹 Function to save route details
-    func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, completion: @escaping () -> Void) {
+    func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, routeName: String, routeDescription: String, completion: @escaping () -> Void) {
         let routeRef = db.collection("routes").document(routeId)
 
         let data: [String: Any] = [
@@ -160,7 +160,9 @@ class FirestoreManager{
             "polyline": polyline,
             "public": isPublic,
             "routeImages": routeImages as Any,
-            "userid": userId
+            "userid": userId,
+            "name": routeName,
+            "description": routeDescription
         ]
 
         routeRef.setData(data) { error in
