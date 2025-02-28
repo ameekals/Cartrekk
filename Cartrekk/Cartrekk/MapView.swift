@@ -174,24 +174,25 @@ struct MapView: View {
 
         return AnyView(
             ZStack {
-                Map(position: $cameraPosition) {
-                    UserAnnotation()
-                    if !locationService.locations.isEmpty {
-                        MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
-                            .stroke(.blue, lineWidth: 3)
-
+                VStack{
+                    
+                    Map(position: $cameraPosition) {
+                        UserAnnotation()
+                        if !locationService.locations.isEmpty {
+                            MapPolyline(coordinates: locationService.locations.map { $0.coordinate })
+                                .stroke(.blue, lineWidth: 3)
+                            
+                        }
+                    }
+                    .padding(.top, 55)
+                    .mapControls{
+                        MapCompass()
+                        MapUserLocationButton()
+                        MapScaleView()
                     }
                 }
-                .mapControls{
-                    MapCompass()
-                    MapUserLocationButton()
-                    MapPitchToggle()
-                    MapScaleView()
-                    
-                }
-                
+ 
                 .edgesIgnoringSafeArea(.all)
-
                 VStack {
                     Spacer()
 

@@ -185,7 +185,12 @@ class FirestoreManager{
                 var currentImages = document.data()?["routeImages"] as? [String] ?? []
                 
                 // Add the new image URL to the array
-                currentImages.append(newImageUrl)
+                if(newImageUrl == "null"){
+                    print("image not found")
+                }else{
+                    currentImages.append(newImageUrl)
+                }
+                
                 
                 // Update only the routeImages field
                 routeRef.updateData([
