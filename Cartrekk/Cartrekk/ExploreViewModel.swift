@@ -32,7 +32,9 @@ class ExploreViewModel: ObservableObject {
                 for (index, post) in posts.enumerated() {
                     self.db.fetchUsernameSync(userId: post.userid) { username in
                         if let username = username {
-                            self.posts[index].username = username
+                            if self.posts.count > 0 {
+                                self.posts[index].username = username
+                            }
                         }
                     }
                 }

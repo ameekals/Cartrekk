@@ -271,6 +271,11 @@ struct MainAppView: View {
     
     var body: some View {
         TabView {
+            ExploreView()
+                .tabItem {
+                    Image(systemName: "globe")
+                    Text("Explore")
+                }
             MapView()
                 .tabItem {
                     Image(systemName: "map")
@@ -283,11 +288,6 @@ struct MainAppView: View {
                     Text("Profile")
                 }
             
-            ExploreView()
-                .tabItem {
-                    Image(systemName: "globe")
-                    Text("Explore")
-                }
         }
         .accentColor(.blue)
         .background(Color.black.edgesIgnoringSafeArea(.all))

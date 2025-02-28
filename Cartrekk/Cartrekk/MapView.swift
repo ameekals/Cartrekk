@@ -34,7 +34,7 @@ class TrackingStateManager: ObservableObject {
         }
     }
     
-    func stopTracking(userId: String) {
+    func stopTracking(userId: String, routeName: String, routeDescription: String) {
         guard let routeId = currentRouteId else { return }
         isTracking = false
         timer?.invalidate()
@@ -42,12 +42,112 @@ class TrackingStateManager: ObservableObject {
         
         let finalTime = elapsedTime
         
-        locationService.saveRoute(raw_userId: userId, time: finalTime, routeID: routeId) { [weak self] in
+        locationService.saveRoute(raw_userId: userId, time: finalTime, routeID: routeId, routeName: routeName, routeDescription: routeDescription) { [weak self] in
 
             guard let self = self else { return }
             self.elapsedTime = 0.0
             self.locationService.stopTracking(userId: userId)
             self.currentRouteId = nil
+        }
+    }
+}
+
+struct RouteDetailsOverlay: View {
+    @Binding var isPresented: Bool
+    @State private var routeName: String = ""
+    @State private var routeDescription: String = ""
+    @Environment(\.colorScheme) var colorScheme
+    var onSave: (String, String) -> Void
+    
+    var body: some View {
+        GeometryReader { geometry in
+            if isPresented {
+                // Just the card with no background layer
+                VStack(spacing: 20) {
+                    // Header
+                    Text("Save Your Route")
+                        .font(.headline)
+                        .padding(.top, 20)
+                    
+                    // Divider
+                    Rectangle()
+                        .frame(height: 1)
+                        .foregroundColor(Color.gray.opacity(0.3))
+                        .padding(.horizontal)
+                    
+                    // Form fields
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Route Name")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        TextField("Enter a name", text: $routeName)
+                            .padding()
+                            .background(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.8))
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                        
+                        Text("Description (Optional)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .padding(.top, 8)
+                        
+                        TextEditor(text: $routeDescription)
+                            .frame(height: 100)
+                            .padding(4)
+                            .background(colorScheme == .dark ? Color.black.opacity(0.3) : Color.white.opacity(0.8))
+                            .cornerRadius(10)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.gray.opacity(0.3), lineWidth: 1)
+                            )
+                    }
+                    .padding(.horizontal)
+                    
+                    // Buttons
+                    HStack(spacing: 20) {
+                        Button(action: {
+                            isPresented = false
+                        }) {
+                            Text("Cancel")
+                                .frame(minWidth: 100)
+                                .padding()
+                                .background(Color.gray.opacity(0.3))
+                                .foregroundColor(colorScheme == .dark ? .white : .black)
+                                .cornerRadius(10)
+                        }
+                        
+                        Button(action: {
+                            onSave(routeName, routeDescription)
+                            isPresented = false
+                        }) {
+                            Text("Save Route")
+                                .frame(minWidth: 100)
+                                .padding()
+                                .background(routeName.isEmpty ? Color.blue.opacity(0.3) : Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(10)
+                        }
+                        .disabled(routeName.isEmpty)
+                    }
+                    .padding(.bottom, 20)
+                }
+                .frame(width: UIScreen.main.bounds.width * 0.85)
+                .background(
+                    RoundedRectangle(cornerRadius: 20)
+                        .fill(colorScheme == .dark ? Color.black.opacity(0.7) : Color.white.opacity(0.8))
+                )
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                .shadow(color: Color.black.opacity(0.2), radius: 10)
+                .transition(.opacity)
+                .animation(.easeIn(duration: 0.2), value: isPresented)
+                // Center it on screen
+                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                .zIndex(100)
+            }
         }
     }
 }
@@ -60,6 +160,7 @@ struct MapView: View {
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
+    @State private var showRouteDetailsOverlay = false
     
     var body: some View {
         // Use optional binding instead of force-unwrapping (!)
@@ -104,8 +205,8 @@ struct MapView: View {
 
                         Button(action: {
                             if trackingManager.isTracking {
-                                print("Stopping Route")
-                                trackingManager.stopTracking(userId: userId)
+                                print("Showing route details overlay")
+                                showRouteDetailsOverlay = true
                             } else {
                                 CLLocationManager().requestAlwaysAuthorization()
                                 let newRouteId = UUID()
@@ -140,6 +241,25 @@ struct MapView: View {
                         Spacer()
                     }
                     .padding(.bottom, 40)
+                }
+                if showRouteDetailsOverlay {
+                    // Use a transparent "hit zone" for detecting taps outside the card
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            showRouteDetailsOverlay = false
+                        }
+                        .ignoresSafeArea()
+                        .zIndex(90)
+                    
+                    RouteDetailsOverlay(isPresented: $showRouteDetailsOverlay) { name, description in
+                        trackingManager.stopTracking(
+                            userId: userId,
+                            routeName: name,
+                            routeDescription: description
+                        )
+                    }
+                    .zIndex(100)
                 }
             }
             .background(Color.black.edgesIgnoringSafeArea(.all))
