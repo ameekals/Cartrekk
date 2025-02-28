@@ -463,9 +463,14 @@ struct PastRoutesView: View {
                     .padding()
             } else {
                 List(viewModel.routes, id: \.docID) { route in
-                    RouteRow(route: route)
-                }
-                .background(Color.black)
+                   RouteRow(route: route, onDelete: {
+                       // Remove the route locally from viewModel.routes
+                       if let index = viewModel.routes.firstIndex(where: { $0.docID == route.docID }) {
+                           viewModel.routes.remove(at: index)
+                       }
+                   })
+               }
+               .background(Color.black)
             }
             
             Spacer()
@@ -499,13 +504,16 @@ struct RouteRow: View {
     let route: FirestoreManager.fb_Route
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authManager: AuthenticationManager
-    @State private var isCurrentlyPublic: Bool  // Add state to track public status
+    @State private var isCurrentlyPublic: Bool
+    // Add a callback for deletion
+    var onDelete: () -> Void
     
-    init(route: FirestoreManager.fb_Route) {
+    init(route: FirestoreManager.fb_Route, onDelete: @escaping () -> Void) {
         self.route = route
-        // Initialize the state with the route's public status
+        self.onDelete = onDelete
         _isCurrentlyPublic = State(initialValue: route.isPublic)
     }
+    
     @State private var showDeleteConfirmation = false
     @State private var showPostConfirmation = false
     @State private var isLiked = false
@@ -536,9 +544,8 @@ struct RouteRow: View {
                     Button("Delete", role: .destructive) {
                         Task {
                             if await viewModel.deleteRoute(routeId: route.docID) {
-                                if let userId = authManager.userId {
-                                    await viewModel.loadRoutes(userId: userId)
-                                }
+                                // Call the onDelete callback to notify parent view
+                                onDelete()
                             }
                         }
                     }
