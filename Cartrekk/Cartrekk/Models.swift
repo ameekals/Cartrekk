@@ -17,6 +17,8 @@ struct Post: Identifiable {
     var polyline: String
     var userid: String
     var username: String
+    var name: String
+    var description: String
 }
 
 struct Route: Identifiable, Codable {

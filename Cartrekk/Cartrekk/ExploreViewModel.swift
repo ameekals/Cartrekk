@@ -25,7 +25,9 @@ class ExploreViewModel: ObservableObject {
                         comments: [], // You might want to load comments separately
                         polyline: route.polyline,
                         userid: route.userId,
-                        username: route.userId
+                        username: route.userId,
+                        name: route.name,
+                        description: route.description
                     )
                 }
                 
