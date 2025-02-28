@@ -393,6 +393,7 @@ struct ProfileView: View {
             if let userId = authManager.userId {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
+                    garageManager.fetchTotalMiles(userId: userId)
                 }
             }
         }
