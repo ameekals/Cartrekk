@@ -18,18 +18,33 @@ import Polyline
 
 struct ContentView: View {
     @StateObject private var authManager = AuthenticationManager()
+    @StateObject private var tutorialManager = TutorialManager()
     @State private var email: String = ""
     @State private var password: String = ""
-
+    
     var body: some View {
         if authManager.isLoggedIn {
             if authManager.needsUsername {
-                UsernameSetupView()
-                    .environmentObject(authManager)
-                    .preferredColorScheme(.dark)
+                UsernameSetupView(onComplete: {
+                    // Always show tutorial after username setup
+                    tutorialManager.triggerTutorial()
+                })
+                .environmentObject(authManager)
+                .preferredColorScheme(.dark)
+            } else if tutorialManager.showTutorial {
+                TutorialView(onComplete: {
+                    // Only save tutorial as shown if it wasn't triggered manually
+                    if !UserDefaults.standard.bool(forKey: "tutorialShown") {
+                        UserDefaults.standard.set(true, forKey: "tutorialShown")
+                    }
+                    tutorialManager.showTutorial = false
+                })
+                .environmentObject(authManager)
+                .preferredColorScheme(.dark)
             } else {
                 MainAppView()
                     .environmentObject(authManager)
+                    .environmentObject(tutorialManager) // Pass tutorial manager
                     .preferredColorScheme(.dark)
             }
         } else {
@@ -38,9 +53,18 @@ struct ContentView: View {
                 .preferredColorScheme(.dark)
         }
     }
+    
+    func onAppear() {
+        // Initial check - only show tutorial automatically on first launch
+        if authManager.isLoggedIn && !authManager.needsUsername && !UserDefaults.standard.bool(forKey: "tutorialShown") {
+            tutorialManager.showTutorial = true
+        }
+    }
 }
 
 // MARK: - Auth Manager
+
+
 
 class AuthenticationManager: ObservableObject {
     @Published var isLoggedIn: Bool = false
@@ -216,6 +240,7 @@ struct LoginView: View {
 }
 
 struct UsernameSetupView: View {
+    var onComplete: () -> Void = {}
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var username: String = ""
     @State private var isLoading: Bool = false
@@ -255,14 +280,17 @@ struct UsernameSetupView: View {
     }
     
     private func createUsername() {
-        isLoading = true
-        authManager.setUsername(username) { success, error in
-            isLoading = false
-            if let error = error {
-                errorMessage = error
-            }
-        }
-    }
+       isLoading = true
+       authManager.setUsername(username) { success, error in
+           isLoading = false
+           if let error = error {
+               errorMessage = error
+           } else if success {
+               // Call onComplete when username is successfully set
+               onComplete()
+           }
+       }
+   }
 }
 
 // MARK: - Main App View
@@ -295,51 +323,11 @@ struct MainAppView: View {
     }
 }
 
-// MARK: - Camera View
-
-struct CameraView: UIViewControllerRepresentable {
-    @Binding var image: UIImage?
-
-    func makeCoordinator() -> Coordinator {
-        return Coordinator(self)
-    }
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        picker.allowsEditing = false
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraView
-
-        init(_ parent: CameraView) {
-            self.parent = parent
-        }
-
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let selectedImage = info[.originalImage] as? UIImage {
-                parent.image = selectedImage
-            }
-            picker.dismiss(animated: true)
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
-        }
-    }
-}
-
-
-
 
 // MARK: - Profile View
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    @EnvironmentObject var tutorialManager: TutorialManager
     @ObservedObject var garageManager = GarageManager.shared
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showPastRoutes = false
@@ -377,9 +365,16 @@ struct ProfileView: View {
                     
                     ProfileButton(title: "Support", icon: "questionmark.circle")
                     
+                    Button (action:{
+                        tutorialManager.triggerTutorial()
+                    }) {
+                        ProfileButton(title: "Tutorial", icon: "questionmark.circle")
+                    }
+                    
                     Button(action: logout) {
                         ProfileButton(title: "Log Out", icon: "arrow.backward", color: .red)
                     }
+                    
                 }
                 .padding(.top, 30)
                 
@@ -690,6 +685,145 @@ class ProfileViewModel: ObservableObject {
             print("Error toggling public status: \(error)")
         }
     }
+}
+
+class TutorialManager: ObservableObject {
+    @Published var showTutorial: Bool = false
+    
+    func triggerTutorial() {
+        showTutorial = true
+    }
+}
+
+struct TutorialView: View {
+    var onComplete: () -> Void
+    @State private var currentPage = 0
+    
+    // Tutorial content - customize as needed
+    let tutorialPages = [
+        TutorialPage(
+            title: "Welcome to CarTrekk",
+            description: "Track your drives and share your adventures with friends.",
+            imageName: "car.fill"
+        ),
+        TutorialPage(
+            title: "Record Your Journeys",
+            description: "Tap the car button to start recording a new route. The button turns red while recording.",
+            imageName: "record.circle"
+        ),
+        TutorialPage(
+            title: "Capture Moments",
+            description: "Take photos during your journey to remember special moments and places.",
+            imageName: "camera.circle.fill"
+        ),
+        TutorialPage(
+            title: "Share Routes with Friends",
+            description: "Publish your routes with friends to share your adventures",
+            imageName: "map.fill"
+        ),
+        TutorialPage(
+            title: "Open Lootboxes and Earn Rewards",
+            description: "Use the miles you've driven to open lootboxes and earn rewards!",
+            imageName: "gift.fill"
+        )
+    ]
+    
+    var body: some View {
+        ZStack {
+            Color.black.edgesIgnoringSafeArea(.all)
+            
+            VStack {
+                Spacer()
+                
+                // App logo or icon
+                Image(systemName: "car.circle.fill")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 100, height: 100)
+                    .foregroundColor(.blue)
+                    .padding(.bottom, 40)
+                
+                // Current tutorial page content
+                VStack(spacing: 20) {
+                    Image(systemName: tutorialPages[currentPage].imageName)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 120, height: 120)
+                        .foregroundColor(.white)
+                        .padding()
+                    
+                    Text(tutorialPages[currentPage].title)
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    
+                    Text(tutorialPages[currentPage].description)
+                        .font(.body)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.gray)
+                        .padding(.horizontal, 40)
+                }
+                
+                Spacer()
+                
+                // Page indicators
+                HStack(spacing: 8) {
+                    ForEach(0..<tutorialPages.count, id: \.self) { index in
+                        Circle()
+                            .fill(currentPage == index ? Color.white : Color.gray.opacity(0.5))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .padding(.bottom, 20)
+                
+                // Navigation buttons
+                HStack {
+                    if currentPage > 0 {
+                        Button(action: {
+                            withAnimation {
+                                currentPage -= 1
+                            }
+                        }) {
+                            Text("Previous")
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                                .padding()
+                                .background(Color.gray.opacity(0.3))
+                                .cornerRadius(10)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        withAnimation {
+                            if currentPage < tutorialPages.count - 1 {
+                                currentPage += 1
+                            } else {
+                                onComplete()
+                            }
+                        }
+                    }) {
+                        Text(currentPage < tutorialPages.count - 1 ? "Next" : "Get Started")
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Color.blue)
+                            .cornerRadius(10)
+                    }
+                }
+                .padding(.horizontal, 30)
+                .padding(.bottom, 40)
+            }
+        }
+    }
+}
+
+// Simple data structure for tutorial pages
+struct TutorialPage {
+    let title: String
+    let description: String
+    let imageName: String
 }
 
 #Preview {
