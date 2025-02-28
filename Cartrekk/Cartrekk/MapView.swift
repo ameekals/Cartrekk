@@ -215,7 +215,7 @@ struct MapView: View {
                         }) {
                             Image(systemName: "car.fill")
                                 .resizable()
-                                .frame(width: 50, height: 50)
+                                .frame(width: 60, height: 50)
                                 .padding()
                                 .background(trackingManager.isTracking ? Color.red : Color.green)
                                 .foregroundColor(.white)
@@ -225,20 +225,21 @@ struct MapView: View {
 
                         Spacer()
 
-                        // Camera Button
-                        Button(action: {
-                            showCamera = true
-                        }) {
-                            Image(systemName: "camera.circle.fill")
-                                .resizable()
-                                .frame(width: 50, height: 50)
-                                .foregroundColor(.white)
-                                .background(Color.blue.opacity(0.9))
-                                .clipShape(Circle())
-                                .shadow(radius: 5)
-                        }
-
-                        Spacer()
+                        if trackingManager.isTracking {
+                           Button(action: {
+                               showCamera = true
+                           }) {
+                               Image(systemName: "camera.circle.fill")
+                                   .resizable()
+                                   .frame(width: 50, height: 50)
+                                   .foregroundColor(.white)
+                                   .background(Color.blue.opacity(0.9))
+                                   .clipShape(Circle())
+                                   .shadow(radius: 5)
+                           }
+                           
+                           Spacer()
+                       }
                     }
                     .padding(.bottom, 40)
                 }
