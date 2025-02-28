@@ -142,6 +142,7 @@ struct FindFriendsView: View {
     @Binding var searchText: String
     @State private var searchResults: [User] = []
     @State private var isSearching = false
+    @State private var searchWorkItem: DispatchWorkItem? = nil
     
     var body: some View {
         VStack {
@@ -152,17 +153,33 @@ struct FindFriendsView: View {
                 
                 TextField("Search by username", text: $searchText)
                     .onChange(of: searchText) { newValue in
-                        if !newValue.isEmpty {
-                            searchUsers(query: newValue)
-                        } else {
+                        // Cancel any previous search task
+                        searchWorkItem?.cancel()
+                        
+                        if newValue.isEmpty {
                             searchResults = []
+                            isSearching = false
+                            return
                         }
+                        
+                        // Create a new work item for the search
+                        let workItem = DispatchWorkItem {
+                            searchUsers(query: newValue)
+                        }
+                        
+                        // Save reference to work item
+                        searchWorkItem = workItem
+                        
+                        // Schedule the work item after a delay
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
                     }
                 
                 if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
                         searchResults = []
+                        isSearching = false
+                        searchWorkItem?.cancel()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.gray)
@@ -174,7 +191,6 @@ struct FindFriendsView: View {
             .cornerRadius(10)
             .padding(.horizontal)
             .padding(.top, 10)
-            
             // Search results
             if searchResults.isEmpty && !searchText.isEmpty {
                 if isSearching {

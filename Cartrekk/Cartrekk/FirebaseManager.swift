@@ -457,6 +457,7 @@ class FirestoreManager{
             completion([])
             return
         }
+        print("sending username search query")
         
         db.collection("usernames")
             .whereField(FieldPath.documentID(), isGreaterThanOrEqualTo: query)
