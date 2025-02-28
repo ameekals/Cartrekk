@@ -125,6 +125,7 @@ func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) asy
         let _ = try await s3.putObject(input: putObjectInput)
     } catch {
         // Catch any errors and handle them
+        print(error.localizedDescription)
         return "NULL"
     }
     
