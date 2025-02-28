@@ -138,7 +138,7 @@ struct RouteDetailsOverlay: View {
                 .frame(width: UIScreen.main.bounds.width * 0.85)
                 .background(
                     RoundedRectangle(cornerRadius: 20)
-                        .fill(colorScheme == .dark ? Color.black.opacity(0.7) : Color.white.opacity(0.8))
+                        .fill(colorScheme == .dark ? Color.black.opacity(0.95) : Color.white.opacity(0.95))
                 )
                 .clipShape(RoundedRectangle(cornerRadius: 20))
                 .shadow(color: Color.black.opacity(0.2), radius: 10)

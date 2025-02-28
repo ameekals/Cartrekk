@@ -296,26 +296,31 @@ struct UsernameSetupView: View {
 // MARK: - Main App View
 struct MainAppView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    @State private var selectedTab = 1
     
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             ExploreView()
                 .tabItem {
                     Image(systemName: "globe")
                     Text("Explore")
                 }
+                .tag(0)
+
+                
             MapView()
                 .tabItem {
                     Image(systemName: "map")
                     Text("Map")
                 }
-            
+                .tag(1)
+                
             ProfileView()
                 .tabItem {
                     Image(systemName: "person.circle")
                     Text("Profile")
                 }
-            
+                .tag(2)
         }
         .accentColor(.blue)
         .background(Color.black.edgesIgnoringSafeArea(.all))
