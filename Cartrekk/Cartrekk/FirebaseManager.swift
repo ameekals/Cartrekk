@@ -40,7 +40,9 @@ class FirestoreManager{
                     polyline: data["polyline"] as? String ?? "",
                     isPublic: data["public"] as? Bool ?? false,
                     routeImages: data["routeImages"] as? [String] ?? [],
-                    userId: data["userid"] as? String ?? ""
+                    userId: data["userid"] as? String ?? "",
+                    description: data["description"] as? String ?? "",
+                    name: data["name"] as? String ?? ""
                 )
             }
             
@@ -252,7 +254,9 @@ class FirestoreManager{
                     polyline: data["polyline"] as? String ?? "",
                     isPublic: data["public"] as? Bool ?? false,
                     routeImages: data["routeImages"] as? [String] ?? [],
-                    userId: data["userid"] as? String ?? ""
+                    userId: data["userid"] as? String ?? "",
+                    description: data["description"] as? String ?? "",
+                    name: data["name"] as? String ?? ""
                 )
             }
             
@@ -437,6 +441,8 @@ class FirestoreManager{
         let isPublic: Bool
         let routeImages: [String]?
         let userId: String
+        let description: String
+        let name: String
     }
     
 
