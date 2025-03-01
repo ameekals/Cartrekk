@@ -271,6 +271,70 @@ class FirestoreManager{
         }
     }
     
+    func getFriendsPosts(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
+        // First, get the user's friends list
+        db.collection("users").document(userId).getDocument { snapshot, error in
+            if let error = error {
+                print("Error fetching user data: \(error)")
+                completion(nil)
+                return
+            }
+            
+            guard let data = snapshot?.data(),
+                  let friendIds = data["friends"] as? [String] else {
+                print("No friends found or invalid data")
+                completion([])
+                return
+            }
+            
+            // If the user has no friends, return empty array
+            if friendIds.isEmpty {
+                completion([])
+                return
+            }
+            
+            // Now query for public routes from these friends
+            let routesRef = self.db.collection("routes")
+            routesRef
+                .whereField("userid", in: friendIds)
+                .whereField("public", isEqualTo: true)
+                .order(by: "createdAt", descending: true)
+                .limit(to: 20)
+                .getDocuments { (snapshot, error) in
+                    // The rest is the same as your getPublicRoutes function
+                    if let error = error {
+                        print("Error fetching friends' routes: \(error)")
+                        completion(nil)
+                        return
+                    }
+                    
+                    guard let documents = snapshot?.documents else {
+                        print("No friend routes found")
+                        completion([])
+                        return
+                    }
+                    
+                    let routes: [fb_Route] = documents.compactMap { document in
+                        // Same parsing logic as in getPublicRoutes
+                        let data = document.data()
+                        return fb_Route(
+                            docID: document.documentID,
+                            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                            distance: data["distance"] as? Double ?? 0.0,
+                            duration: data["duration"] as? Double ?? 0.0,
+                            likes: data["likes"] as? Int ?? 0,
+                            polyline: data["polyline"] as? String ?? "",
+                            isPublic: data["public"] as? Bool ?? false,
+                            routeImages: data["routeImages"] as? [String] ?? [],
+                            userId: data["userid"] as? String ?? ""
+                        )
+                    }
+                    
+                    completion(routes)
+                }
+        }
+    }
+    
     func getCommentsForRoute(routeId: String, completion: @escaping ([Comment]?) -> Void) {
         let commentsRef = db.collection("routes").document(routeId).collection("comments")
         
