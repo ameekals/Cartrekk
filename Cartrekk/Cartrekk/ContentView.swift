@@ -88,6 +88,7 @@ class AuthenticationManager: ObservableObject {
                             self?.username = username
                             self?.needsUsername = username == nil
                         }
+                        GarageManager.shared.fetchTotalMiles(userId: userId)
                     }
                 }
             }
@@ -491,8 +492,11 @@ struct ProfileView: View {
                     
                     ProfileButton(title: "Settings", icon: "gearshape")
                     
-                    ProfileButton(title: "Support", icon: "questionmark.circle")
-                    
+                    NavigationLink(destination: GarageView()) {
+                        ProfileButton(title: "Garage", icon: "door.garage.closed")
+                    }
+
+        
                     Button (action:{
                         tutorialManager.triggerTutorial()
                     }) {
@@ -629,15 +633,6 @@ struct PastRoutesView: View {
         }
         .background(Color.black.edgesIgnoringSafeArea(.all))
         .padding()
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink(destination: GarageView()) {
-                    Text("Garage")
-                        .font(.headline)
-                        .foregroundColor(.blue)
-                }
-            }
-        }
         .onAppear {
             if let userId = authManager.userId {
                 Task {

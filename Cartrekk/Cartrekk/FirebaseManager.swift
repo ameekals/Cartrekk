@@ -173,6 +173,41 @@ class FirestoreManager{
         }
     }
     
+    func addCarToInventory(userId: String, carName: String, completion: @escaping (Bool, String) -> Void) {
+        let userRef = db.collection("users").document(userId)
+
+        userRef.updateData([
+            "inventory": FieldValue.arrayUnion([carName])
+        ]) { error in
+            if let error = error {
+                completion(false, "Error adding car: \(error.localizedDescription)")
+            } else {
+                completion(true, "Successfully added \(carName) to inventory!")
+            }
+        }
+    }
+    
+    func fetchUserInventory(userId: String, completion: @escaping ([String]) -> Void) {
+        let userRef = db.collection("users").document(userId)
+
+        userRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error fetching inventory: \(error)")
+                completion([])
+                return
+            }
+
+            guard let document = document, document.exists else {
+                print("User document not found for userId: \(userId)")
+                completion([])
+                return
+            }
+
+            let inventory = document.data()?["inventory"] as? [String] ?? []
+            completion(inventory)
+        }
+    }
+
     // 🔹 Function to save route details
     func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, routeName: String, routeDescription: String, completion: @escaping () -> Void) {
         let routeRef = db.collection("routes").document(routeId)
