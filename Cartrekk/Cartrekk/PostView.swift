@@ -4,6 +4,7 @@ import Polyline
 
 struct PostView: View {
     @ObservedObject var viewModel: ExploreViewModel
+    @StateObject private var postViewModel = PostViewModel()
     @State private var liked: Bool
     @State private var newComment = ""
     @State private var showCommentsSheet = false
@@ -20,102 +21,159 @@ struct PostView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             
-            HStack {
-                Text(post.username)
+           
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        if let profileImage = postViewModel.profileImage {
+                            Image(uiImage: profileImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 40, height: 40)
+                                .clipShape(Circle())
+                        } else {
+                            Image(systemName: "person.circle.fill")
+                                .resizable()
+                                .frame(width: 40, height: 40)
+                                .foregroundColor(.gray)
+                        }
+                        Text(post.username)
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        
+                    }
+                        
+                    // Username and post name aligned to the left
+                    
+                    Text(post.name)
+                        .font(.title)
+                        .fontWeight(.bold)
+                    
+                    // Additional information in an evenly spaced row
+                    HStack {
+                        Text(String(format: "%.2f m", post.distance))
+                        Spacer()
+                        Text(formatDate(post.route.date))
+                        Spacer()
+                        Text(formatDuration(post.duration))
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                }
+                .padding(.horizontal)
+                
+                // Swipeable image carousel
+                TabView {
+                    RoutePreviewMap(post: post)
+                        .frame(height: 250)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                    
+                    ForEach(post.photos, id: \.self) { photoUrl in
+                        AsyncImage(url: URL(string: photoUrl)) { image in
+                            image.resizable()
+                                .scaledToFit()
+                                .frame(height: 250)
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                        } placeholder: {
+                            Color.gray.opacity(0.3)
+                                .frame(height: 250)
+                        }
+                    }
+                }
+                .onAppear {
+                    postViewModel.loadProfilePicture(userId: post.userid)
+                }
+                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+                .frame(height: 250)
+                
+                // Like & Comment Section
+                HStack {
+                    Button(action: {
+                        Task {
+                            await viewModel.likePost(postId: post.id, userId: authManager.userId ?? "")
+                            liked.toggle()
+                        }
+                    }) {
+                        Image(systemName: liked ? "heart.fill" : "heart")
+                            .foregroundColor(liked ? .red : .gray)
+                    }
+                    Text("\(post.likes) likes")
+                    
+                    Spacer()
+                    
+                    Button(action: {
+                        showCommentsSheet = true
+                    }) {
+                        Image(systemName: "message")
+                    }
+                    Text("\(post.comments.count) comments")
+                }
+                .padding(.horizontal)
+                
+                if !post.description.isEmpty {
+                    Text(post.description)
+                        .font(.body)
+                        .padding(.horizontal)
+                        .padding(.top, 4)
+                }
+                
+                // View All Comments Button
+                if post.comments.count > 0 {
+                    Button("View all comments") {
+                        showCommentsSheet = true
+                    }
                     .font(.caption)
                     .foregroundColor(.gray)
-                Spacer()
-            }
-            .padding(.horizontal)
-
-            // Swipeable image carousel
-            TabView {
-                RoutePreviewMap(post: post)
-                    .frame(height: 250)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-
-                ForEach(post.photos, id: \.self) { photoUrl in
-                    AsyncImage(url: URL(string: photoUrl)) { image in
-                        image.resizable()
-                            .scaledToFit()
-                            .frame(height: 250)
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                    } placeholder: {
-                        Color.gray.opacity(0.3)
-                            .frame(height: 250)
+                    .padding(.horizontal)
+                }
+                
+                // Add Comment Input
+                HStack {
+                    TextField("Add a comment...", text: $newComment)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                    
+                    Button(action: {
+                        Task {
+                            await viewModel.addComment(postId: post.id, userId: authManager.userId ?? "", username: authManager.username ?? "", text: newComment)
+                            newComment = ""
+                        }
+                    }) {
+                        Text("Post")
+                            .fontWeight(.bold)
+                            .foregroundColor(.blue)
                     }
                 }
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-            .frame(height: 250)
-
-            // Like & Comment Section
-            HStack {
-                Button(action: {
-                    Task {
-                        await viewModel.likePost(postId: post.id, userId: authManager.userId ?? "")
-                        liked.toggle()
-                    }
-                }) {
-                    Image(systemName: liked ? "heart.fill" : "heart")
-                        .foregroundColor(liked ? .red : .gray)
-                }
-                Text("\(post.likes) likes")
-
-                Spacer()
-
-                Button(action: {
-                    showCommentsSheet = true
-                }) {
-                    Image(systemName: "message")
-                }
-                Text("\(post.comments.count) comments")
-            }
-            .padding(.horizontal)
-
-            // View All Comments Button
-            if post.comments.count > 0 {
-                Button("View all comments") {
-                    showCommentsSheet = true
-                }
-                .font(.caption)
-                .foregroundColor(.gray)
                 .padding(.horizontal)
             }
-
-            // Add Comment Input
-            HStack {
-                TextField("Add a comment...", text: $newComment)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-
-                Button(action: {
-                    Task {
-                        await viewModel.addComment(postId: post.id, userId: authManager.userId ?? "", username: authManager.username ?? "", text: newComment)
-                        newComment = ""
-                    }
-                }) {
-                    Text("Post")
-                        .fontWeight(.bold)
-                        .foregroundColor(.blue)
+            .padding(.vertical, 8)
+            .onAppear {
+                // Check if user liked this post when view appears
+                viewModel.checkUserLikeStatus(
+                    postId: post.id,
+                    userId: authManager.userId ?? ""
+                ) { isLiked in
+                    liked = isLiked
                 }
             }
-            .padding(.horizontal)
-        }
-        .padding(.vertical, 8)
-        .onAppear {
-            // Check if user liked this post when view appears
-            viewModel.checkUserLikeStatus(
-                postId: post.id,
-                userId: authManager.userId ?? ""
-            ) { isLiked in
-                liked = isLiked
+            .sheet(isPresented: $showCommentsSheet) {
+                CommentsSheet(post: post, viewModel: viewModel, showCommentsSheet: $showCommentsSheet)
             }
         }
-        .sheet(isPresented: $showCommentsSheet) {
-            CommentsSheet(post: post, viewModel: viewModel, showCommentsSheet: $showCommentsSheet)
-        }
     }
-}
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    private func formatDuration(_ duration: Double) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
 
 // MARK: - Comments Sheet View
 struct CommentsSheet: View {
@@ -224,5 +282,37 @@ struct RoutePreviewMap: View {
             }
             
         }
+    }
+}
+
+class PostViewModel: ObservableObject {
+    @Published var profileImage: UIImage?
+    private var imageLoadTask: Task<Void, Never>?
+    private let firestoreManager = FirestoreManager.shared
+    
+    func loadProfilePicture(userId: String) {
+        // Cancel any existing task
+        imageLoadTask?.cancel()
+        
+        // Create a new task to load the profile picture
+        imageLoadTask = Task {
+            do {
+                // Use the abstracted method from FirestoreManager
+                let image = try await firestoreManager.getUserProfileImage(userId: userId)
+                
+                // Update the UI on the main thread
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        self.profileImage = image
+                    }
+                }
+            } catch {
+                print("Error loading profile picture: \(error)")
+            }
+        }
+    }
+    
+    deinit {
+        imageLoadTask?.cancel()
     }
 }

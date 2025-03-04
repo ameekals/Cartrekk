@@ -18,18 +18,33 @@ import Polyline
 
 struct ContentView: View {
     @StateObject private var authManager = AuthenticationManager()
+    @StateObject private var tutorialManager = TutorialManager()
     @State private var email: String = ""
     @State private var password: String = ""
-
+    
     var body: some View {
         if authManager.isLoggedIn {
             if authManager.needsUsername {
-                UsernameSetupView()
-                    .environmentObject(authManager)
-                    .preferredColorScheme(.dark)
+                UsernameSetupView(onComplete: {
+                    // Always show tutorial after username setup
+                    tutorialManager.triggerTutorial()
+                })
+                .environmentObject(authManager)
+                .preferredColorScheme(.dark)
+            } else if tutorialManager.showTutorial {
+                TutorialView(onComplete: {
+                    // Only save tutorial as shown if it wasn't triggered manually
+                    if !UserDefaults.standard.bool(forKey: "tutorialShown") {
+                        UserDefaults.standard.set(true, forKey: "tutorialShown")
+                    }
+                    tutorialManager.showTutorial = false
+                })
+                .environmentObject(authManager)
+                .preferredColorScheme(.dark)
             } else {
                 MainAppView()
                     .environmentObject(authManager)
+                    .environmentObject(tutorialManager) // Pass tutorial manager
                     .preferredColorScheme(.dark)
             }
         } else {
@@ -38,9 +53,18 @@ struct ContentView: View {
                 .preferredColorScheme(.dark)
         }
     }
+    
+    func onAppear() {
+        // Initial check - only show tutorial automatically on first launch
+        if authManager.isLoggedIn && !authManager.needsUsername && !UserDefaults.standard.bool(forKey: "tutorialShown") {
+            tutorialManager.showTutorial = true
+        }
+    }
 }
 
 // MARK: - Auth Manager
+
+
 
 class AuthenticationManager: ObservableObject {
     @Published var isLoggedIn: Bool = false
@@ -89,6 +113,7 @@ class AuthenticationManager: ObservableObject {
                     "distance_used" : 0,
                     "email" : email,
                     "friends" : [],
+                    "pending_friends" : [],
                     "inventory" : [],
                     "profilePictureURL" : "",
                     "total_distance" : 0,
@@ -217,6 +242,7 @@ struct LoginView: View {
 }
 
 struct UsernameSetupView: View {
+    var onComplete: () -> Void = {}
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var username: String = ""
     @State private var isLoading: Bool = false
@@ -256,39 +282,47 @@ struct UsernameSetupView: View {
     }
     
     private func createUsername() {
-        isLoading = true
-        authManager.setUsername(username) { success, error in
-            isLoading = false
-            if let error = error {
-                errorMessage = error
-            }
-        }
-    }
+       isLoading = true
+       authManager.setUsername(username) { success, error in
+           isLoading = false
+           if let error = error {
+               errorMessage = error
+           } else if success {
+               // Call onComplete when username is successfully set
+               onComplete()
+           }
+       }
+   }
 }
 
 // MARK: - Main App View
 struct MainAppView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    @State private var selectedTab = 1
     
     var body: some View {
-        TabView {
-            MapView()
-                .tabItem {
-                    Image(systemName: "map")
-                    Text("Map")
-                }
-            
-            ProfileView()
-                .tabItem {
-                    Image(systemName: "person.circle")
-                    Text("Profile")
-                }
-            
+        TabView(selection: $selectedTab) {
             ExploreView()
                 .tabItem {
                     Image(systemName: "globe")
                     Text("Explore")
                 }
+                .tag(0)
+
+                
+            MapView()
+                .tabItem {
+                    Image(systemName: "map")
+                    Text("Map")
+                }
+                .tag(1)
+                
+            ProfileView()
+                .tabItem {
+                    Image(systemName: "person.circle")
+                    Text("Profile")
+                }
+                .tag(2)
         }
         .accentColor(.blue)
         .background(Color.black.edgesIgnoringSafeArea(.all))
@@ -296,64 +330,146 @@ struct MainAppView: View {
     }
 }
 
-// MARK: - Camera View
-
-struct CameraView: UIViewControllerRepresentable {
-    @Binding var image: UIImage?
-
-    func makeCoordinator() -> Coordinator {
-        return Coordinator(self)
-    }
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .camera
-        picker.delegate = context.coordinator
-        picker.allowsEditing = false
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: CameraView
-
-        init(_ parent: CameraView) {
-            self.parent = parent
-        }
-
-        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let selectedImage = info[.originalImage] as? UIImage {
-                parent.image = selectedImage
-            }
-            picker.dismiss(animated: true)
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
-        }
-    }
-}
-
-
-
 
 // MARK: - Profile View
 struct ProfileView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    @EnvironmentObject var tutorialManager: TutorialManager
     @ObservedObject var garageManager = GarageManager.shared
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showPastRoutes = false
+    @State private var showFriendsSheet = false
+    @State private var showImagePicker = false
+    @State private var selectedImage: UIImage?
+    @State private var isUploadingImage = false
+    @State private var profileImage: UIImage?
+    
+    
     
     var body: some View {
         NavigationView {
             VStack {
-                // Profile Image
-                Image(systemName: "person.crop.circle.fill")
-                    .resizable()
+                // Header with profile image and friends button
+                HStack {
+                    Spacer()
+                    // Friends button in top right
+                    Button(action: {
+                        print("Friends button tapped")
+                        showFriendsSheet = true
+                    }) {
+                        HStack {
+                            Image(systemName: "person.2.fill")
+                                .font(.title2)
+                            Text("Friends")
+                                .font(.headline)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.blue.opacity(0.8))
+                        .cornerRadius(20)
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.top, 10)
+                }
+                // Profile Image with tap gesture
+                ZStack {
+                    if let image = selectedImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                    } else if let profileImage = profileImage {
+                        Image(uiImage: profileImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                    } else {
+                        Image(systemName: "person.crop.circle.fill")
+                            .resizable()
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.gray)
+                    }
+                    
+                    // Camera icon overlay
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Image(systemName: "camera.fill")
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                        }
+                    }
                     .frame(width: 100, height: 100)
-                    .foregroundColor(.gray)
-                    .padding(.top, 40)
+                    
+                    if isUploadingImage {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
+                            .frame(width: 100, height: 100)
+                            .background(Color.black.opacity(0.5))
+                            .cornerRadius(50)
+                    }
+                }
+                .padding(.top, 40)
+                .onTapGesture {
+                    showImagePicker = true
+                }
+                .onChange(of: viewModel.profilePictureURL) { _ in
+                    loadProfileImage()
+                }
+                .onChange(of: selectedImage) { newImage in
+                    if let newImage = newImage, let userId = authManager.userId {
+                        isUploadingImage = true
+                        
+                        Task {
+                            do {
+                                // 1. Upload to S3
+                                let imageURL = try await uploadImageToS3(
+                                    image: newImage,
+                                    bucketName: "cartrekk-images"
+                                )
+                                
+                                // 2. Update Firestore
+                                if imageURL != "NULL" {
+                                    FirestoreManager.shared.updateUserProfilePicture(
+                                        userId: userId,
+                                        profilePictureURL: imageURL
+                                    ) { success in
+                                        DispatchQueue.main.async {
+                                            isUploadingImage = false
+                                            if success {
+                                                viewModel.profilePictureURL = imageURL
+                                            } else {
+                                                // Handle error (could show an alert)
+                                                print("Failed to update profile picture in database")
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    DispatchQueue.main.async {
+                                        isUploadingImage = false
+                                        // Handle upload failure (could show an alert)
+                                        print("Failed to upload image to S3")
+                                    }
+                                }
+                            } catch {
+                                DispatchQueue.main.async {
+                                    isUploadingImage = false
+                                    print("Error uploading profile picture: \(error)")
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 
                 // Username
                 Text(authManager.username ?? "Not found")
@@ -380,14 +496,33 @@ struct ProfileView: View {
                         ProfileButton(title: "Garage", icon: "door.garage.closed")
                     }
 
+        
+                    Button (action:{
+                        tutorialManager.triggerTutorial()
+                    }) {
+                        ProfileButton(title: "Tutorial", icon: "questionmark.circle")
+                    }
+                    
                     Button(action: logout) {
                         ProfileButton(title: "Log Out", icon: "arrow.backward", color: .red)
                     }
+                    
                 }
                 .padding(.top, 30)
                 
                 Spacer()
             }
+            .sheet(isPresented: $showFriendsSheet) {
+               FriendsView()
+                   .environmentObject(authManager)
+           }
+           .sheet(isPresented: $showImagePicker) {
+               ImagePicker(selectedImage: $selectedImage)
+           }
+            .sheet(isPresented: $showFriendsSheet) {
+                       FriendsView()
+                           .environmentObject(authManager)
+                   }
             .frame(maxWidth: .infinity)
             .background(Color.black.edgesIgnoringSafeArea(.all))
             .navigationBarHidden(true)
@@ -397,6 +532,8 @@ struct ProfileView: View {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
                     garageManager.fetchTotalMiles(userId: userId)
+                    loadProfileImage()
+                    await viewModel.loadUserProfile(userId: userId)
                 }
             }
         }
@@ -410,6 +547,21 @@ struct ProfileView: View {
         } catch {
             print("Error signing out: \(error.localizedDescription)")
         }
+    }
+    
+    private func loadProfileImage() {
+        guard let profileImageURL = viewModel.profilePictureURL,
+              let url = URL(string: profileImageURL) else {
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let data = data, let image = UIImage(data: data) {
+                DispatchQueue.main.async {
+                    self.profileImage = image
+                }
+            }
+        }.resume()
     }
 }
 
@@ -512,6 +664,8 @@ struct RouteRow: View {
     @State private var showDeleteConfirmation = false
     @State private var showPostConfirmation = false
     @State private var isLiked = false
+    @State private var showCommentsSheet = false
+    @State private var routeComments: [Comment] = []
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -548,6 +702,15 @@ struct RouteRow: View {
                 }
             }
             
+            // Route title if available
+            let routeName = route.name
+            if !routeName.isEmpty {
+                Text(routeName)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .padding(.top, 4)
+            }
+            
             // Rest of the route information
             HStack {
                 Text(String(format: "%.2f m", route.distance))
@@ -557,33 +720,53 @@ struct RouteRow: View {
             .font(.subheadline)
             .foregroundColor(.gray)
             
-            // Map view with the route
-            let polyline = Polyline(encodedPolyline: route.polyline)
-            
-            if let locations = polyline.locations, !locations.isEmpty {
-                Map {
-                    Marker("Start",
-                           coordinate: locations.first!.coordinate)
-                    .tint(.green)
-                    
-                    Marker("End",
-                           coordinate: locations.last!.coordinate)
-                    .tint(.red)
-                    
-                    MapPolyline(coordinates: locations.map { $0.coordinate })
-                        .stroke(
-                            Color.blue.opacity(0.8),
-                            style: StrokeStyle(
-                                lineWidth: 4,
-                                lineCap: .butt,
-                                lineJoin: .round,
-                                miterLimit: 10
+            TabView {
+                // Map view with the route
+                let polyline = Polyline(encodedPolyline: route.polyline)
+                
+                if let locations = polyline.locations, !locations.isEmpty {
+                    Map {
+                        Marker("Start",
+                               coordinate: locations.first!.coordinate)
+                        .tint(.green)
+                        
+                        Marker("End",
+                               coordinate: locations.last!.coordinate)
+                        .tint(.red)
+                        
+                        MapPolyline(coordinates: locations.map { $0.coordinate })
+                            .stroke(
+                                Color.blue.opacity(0.8),
+                                style: StrokeStyle(
+                                    lineWidth: 4,
+                                    lineCap: .butt,
+                                    lineJoin: .round,
+                                    miterLimit: 10
+                                )
                             )
-                        )
+                    }
+                    .frame(height: 250)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .disabled(true)
+                    .allowsHitTesting(false)
                 }
-                .frame(height: 200)
-                .cornerRadius(10)
+
+                if let routeImages = route.routeImages, !routeImages.isEmpty {
+                    ForEach(routeImages, id: \.self) { photoUrl in
+                        AsyncImage(url: URL(string: photoUrl)) { image in
+                            image.resizable()
+                                .scaledToFit()
+                                .frame(height: 250)
+                        } placeholder: {
+                            Color.gray.opacity(0.3)
+                        }
+                    }
+                }
             }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+            .frame(height: 250)
+
+            
             HStack(spacing: 20) {
                 // Likes display
                 HStack {
@@ -592,6 +775,23 @@ struct RouteRow: View {
                     Text("\(route.likes)")
                         .foregroundColor(.gray)
                 }
+                
+                // Comments display with button to view
+                Button(action: {
+                    Task {
+                        routeComments = await viewModel.loadCommentsForRoute(routeId: route.docID)
+                        showCommentsSheet = true
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "message")
+                        Text("Comments")
+                            .foregroundColor(.gray)
+                    }
+                }
+                .buttonStyle(.borderless)
+                
+                Spacer()
                 
                 // Public/Private toggle
                 Button(action: {
@@ -623,7 +823,47 @@ struct RouteRow: View {
                     }
                 }
             }
+            
             .padding(.vertical, 8)
+            
+            // Route description if available
+            let description = route.description
+            if !description.isEmpty {
+                Text(description)
+                    .font(.body)
+                    .padding(.vertical, 4)
+            }
+        }
+        
+        .sheet(isPresented: $showCommentsSheet) {
+            NavigationView {
+                List {
+                    if !routeComments.isEmpty {
+                        ForEach(routeComments) { comment in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(comment.username)
+                                    .fontWeight(.bold)
+                                Text(comment.text)
+                                Text(comment.timestamp, style: .relative)
+                                    .foregroundColor(.gray)
+                            }
+                            .font(.caption)
+                        }
+                    } else {
+                        Text("No comments yet")
+                            .foregroundColor(.gray)
+                            .italic()
+                    }
+                }
+                .navigationTitle("Comments")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Close") {
+                            showCommentsSheet = false
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -646,6 +886,7 @@ struct RouteRow: View {
 // MARK: - Profile View Model
 class ProfileViewModel: ObservableObject {
     @Published var routes: [FirestoreManager.fb_Route] = []
+    @Published var profilePictureURL: String?
     private let db = FirestoreManager()
     
     @MainActor
@@ -685,7 +926,71 @@ class ProfileViewModel: ObservableObject {
             print("Error toggling public status: \(error)")
         }
     }
+    
+    func loadCommentsForRoute(routeId: String) async -> [Comment] {
+        return await withCheckedContinuation { continuation in
+            db.getCommentsForRoute(routeId: routeId) { comments in
+                continuation.resume(returning: comments ?? [])
+            }
+        }
+    }
+    
+    func loadUserProfile(userId: String) async {
+            let db = Firestore.firestore()
+            do {
+                let document = try await db.collection("users").document(userId).getDocument()
+                if let data = document.data(), let profileURL = data["profilePictureURL"] as? String {
+                    DispatchQueue.main.async {
+                        self.profilePictureURL = profileURL
+                    }
+                }
+            } catch {
+                print("Error loading user profile: (error)")
+            }
+        }
 }
+
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var selectedImage: UIImage?
+    @Environment(\.presentationMode) private var presentationMode
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.allowsEditing = true
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+        
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let editedImage = info[.editedImage] as? UIImage {
+                parent.selectedImage = editedImage
+            } else if let originalImage = info[.originalImage] as? UIImage {
+                parent.selectedImage = originalImage
+            }
+            
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+    }
+}
+
 
 #Preview {
     ContentView()

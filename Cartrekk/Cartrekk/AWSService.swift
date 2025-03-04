@@ -61,7 +61,7 @@ func getBucketNames() async throws -> [String] {
         }
     }
 }
-func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) async throws -> String {
+func uploadImageToS3(image: UIImage?, bucketName: String) async throws -> String {
     // Convert UIImage to Data
     guard let image = image, let imageData = image.jpegData(compressionQuality: 0.5) else {
         throw NSError(domain: "ImageConversionError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert UIImage to Data"])
@@ -90,11 +90,42 @@ func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) asy
          // Adjust based on your image type
     )
     // Upload the image to S3
+    
+    var retries = 0
+        
+    let startTime = Date()
+
+    while true {
+        do {
+            // Attempt to upload the image
+            let _ = try await s3.putObject(input: putObjectInput)
+            print("Image uploaded successfully!")
+            
+            // Construct the URL of the uploaded image
+            let imageURL = "https://\(bucketName).s3.us-west-1.amazonaws.com/\(imageName)"
+            return imageURL
+        } catch {
+            let elapsedTime = Date().timeIntervalSince(startTime)
+            if elapsedTime > 300 { // 5 minutes = 300 seconds
+                print("Upload failed after 5 minutes, giving up.")
+                return "NULL"
+            }
+            
+            retries += 1
+            let waitTime = min(pow(2.0, Double(retries)), 60.0)
+            print("Upload failed, retrying in \(waitTime) seconds... Error: \(error)")
+            try await Task.sleep(nanoseconds: UInt64(waitTime * 1_000_000_000))
+        }
+    }
+    
+        //let imageURL = "https://\(bucketName).s3.us-west-1.amazonaws.com/\(imageName)"
+    /*
     do {
         // Attempt to upload the image
         let _ = try await s3.putObject(input: putObjectInput)
     } catch {
         // Catch any errors and handle them
+        print(error.localizedDescription)
         return "NULL"
     }
     
@@ -105,6 +136,9 @@ func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) asy
     // Construct the URL of the uploaded image
     let imageURL = "https://\(bucketName).s3.us-west-1.amazonaws.com/\(imageName)"
     return imageURL
+ 
+     */
+    
 }
 
 func getImageFromS3(imageURL: String) async throws -> UIImage {
