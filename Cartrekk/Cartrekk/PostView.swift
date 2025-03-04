@@ -20,7 +20,7 @@ struct PostView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            
+           
             HStack {
                 if let profileImage = postViewModel.profileImage {
                     Image(uiImage: profileImage)
@@ -34,18 +34,30 @@ struct PostView: View {
                         .frame(width: 40, height: 40)
                         .foregroundColor(.gray)
                 }
+
+            VStack(alignment: .leading, spacing: 8) {
+                // Username and post name aligned to the left
                 Text(post.username)
                     .font(.headline)
                     .foregroundColor(.gray)
-                Spacer()
+                    
+                Text(post.name)
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                // Additional information in an evenly spaced row
+                HStack {
+                    Text(String(format: "%.2f m", post.distance))
+                    Spacer()
+                    Text(formatDate(post.route.date))
+                    Spacer()
+                    Text(formatDuration(post.duration))
+                }
+                .font(.subheadline)
+                .foregroundColor(.gray)
             }
             .padding(.horizontal)
             
-            Text(post.name)
-                .font(.title)
-                .fontWeight(.bold)
-                .padding(.horizontal)
-
             // Swipeable image carousel
             TabView {
                 RoutePreviewMap(post: post)
@@ -143,6 +155,21 @@ struct PostView: View {
             CommentsSheet(post: post, viewModel: viewModel, showCommentsSheet: $showCommentsSheet)
         }
     }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
+    }
+    
+    private func formatDuration(_ duration: Double) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
 }
 
 // MARK: - Comments Sheet View

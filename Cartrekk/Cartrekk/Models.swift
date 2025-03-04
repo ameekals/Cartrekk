@@ -19,6 +19,8 @@ struct Post: Identifiable {
     var username: String
     var name: String
     var description: String
+    var distance: Double
+    var duration: Double
 }
 
 struct Route: Identifiable, Codable {
