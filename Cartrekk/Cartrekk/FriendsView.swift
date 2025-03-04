@@ -245,17 +245,6 @@ struct FriendRow: View {
             }
             
             Spacer()
-            
-            Button(action: {
-                // View friend's profile
-            }) {
-                Text("View Profile")
-                    .font(.caption)
-                    .padding(6)
-                    .background(Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-            }
         }
         .padding(.vertical, 4)
     }
