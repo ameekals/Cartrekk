@@ -32,6 +32,16 @@ struct PostView: View {
                 .font(.title)
                 .fontWeight(.bold)
                 .padding(.horizontal)
+            
+            // Rest of the route information
+            HStack {
+                Text(String(format: "%.2f m", post.distance))
+                Spacer()
+                Text(formatDuration(post.duration))
+            }
+            
+            .font(.subheadline)
+            .foregroundColor(.gray)
 
             // Swipeable image carousel
             TabView {
@@ -127,6 +137,14 @@ struct PostView: View {
             CommentsSheet(post: post, viewModel: viewModel, showCommentsSheet: $showCommentsSheet)
         }
     }
+    
+    private func formatDuration(_ duration: Double) -> String {
+        let hours = Int(duration) / 3600
+        let minutes = (Int(duration) % 3600) / 60
+        let seconds = Int(duration) % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
 }
 
 // MARK: - Comments Sheet View
