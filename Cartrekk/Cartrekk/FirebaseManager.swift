@@ -215,6 +215,23 @@ class FirestoreManager{
         }
     }
     
+    func updateUserProfilePicture(userId: String, profilePictureURL: String, completion: @escaping (Bool) -> Void) {
+        let userRef = db.collection("users").document(userId)
+        
+        // Update the profilePictureURL field
+        userRef.updateData([
+            "profilePictureURL": profilePictureURL
+        ]) { error in
+            if let error = error {
+                print("Error updating profile picture: \(error)")
+                completion(false)
+            } else {
+                print("Profile picture successfully updated!")
+                completion(true)
+            }
+        }
+    }
+    
     func deleteRoute(routeId: String, completion: @escaping (Bool) -> Void) {
         let routeRef = db.collection("routes").document(routeId)
         

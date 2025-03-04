@@ -289,7 +289,6 @@ struct MapView: View {
             Task {
                 do {
                     let imageURL = try await uploadImageToS3(image: capturedImage,
-                                                           imageName: "capturedImage.jpg",
                                                            bucketName: "cartrekk-images")
                    
                     locationService.addImageToRoute(routeID: currentRouteId, imageURL: imageURL)
