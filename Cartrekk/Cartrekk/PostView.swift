@@ -19,30 +19,29 @@ struct PostView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            
-            HStack {
+            VStack(alignment: .leading, spacing: 8) {
+                // Username and post name aligned to the left
                 Text(post.username)
                     .font(.headline)
                     .foregroundColor(.gray)
-                Spacer()
+                    
+                Text(post.name)
+                    .font(.title)
+                    .fontWeight(.bold)
+                
+                // Additional information in an evenly spaced row
+                HStack {
+                    Text(String(format: "%.2f m", post.distance))
+                    Spacer()
+                    Text(formatDate(post.route.date))
+                    Spacer()
+                    Text(formatDuration(post.duration))
+                }
+                .font(.subheadline)
+                .foregroundColor(.gray)
             }
             .padding(.horizontal)
             
-            Text(post.name)
-                .font(.title)
-                .fontWeight(.bold)
-                .padding(.horizontal)
-            
-            // Rest of the route information
-            HStack {
-                Text(String(format: "%.2f m", post.distance))
-                Spacer()
-                Text(formatDuration(post.duration))
-            }
-            
-            .font(.subheadline)
-            .foregroundColor(.gray)
-
             // Swipeable image carousel
             TabView {
                 RoutePreviewMap(post: post)
@@ -136,6 +135,13 @@ struct PostView: View {
         .sheet(isPresented: $showCommentsSheet) {
             CommentsSheet(post: post, viewModel: viewModel, showCommentsSheet: $showCommentsSheet)
         }
+    }
+    
+    private func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: date)
     }
     
     private func formatDuration(_ duration: Double) -> String {
