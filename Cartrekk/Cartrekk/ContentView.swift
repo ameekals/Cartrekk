@@ -341,6 +341,7 @@ struct ProfileView: View {
     @State private var showImagePicker = false
     @State private var selectedImage: UIImage?
     @State private var isUploadingImage = false
+    @State private var profileImage: UIImage?
     
     
     
@@ -379,11 +380,8 @@ struct ProfileView: View {
                             .frame(width: 100, height: 100)
                             .clipShape(Circle())
                             .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                    } else if let profileImageURL = viewModel.profilePictureURL, !profileImageURL.isEmpty,
-                              let url = URL(string: profileImageURL),
-                              let imageData = try? Data(contentsOf: url),
-                              let uiImage = UIImage(data: imageData) {
-                        Image(uiImage: uiImage)
+                    } else if let profileImage = profileImage {
+                        Image(uiImage: profileImage)
                             .resizable()
                             .scaledToFill()
                             .frame(width: 100, height: 100)
@@ -422,6 +420,9 @@ struct ProfileView: View {
                 .padding(.top, 40)
                 .onTapGesture {
                     showImagePicker = true
+                }
+                .onChange(of: viewModel.profilePictureURL) { _ in
+                    loadProfileImage()
                 }
                 .onChange(of: selectedImage) { newImage in
                     if let newImage = newImage, let userId = authManager.userId {
@@ -527,6 +528,7 @@ struct ProfileView: View {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
                     garageManager.fetchTotalMiles(userId: userId)
+                    loadProfileImage()
                     await viewModel.loadUserProfile(userId: userId)
                 }
             }
@@ -541,6 +543,21 @@ struct ProfileView: View {
         } catch {
             print("Error signing out: \(error.localizedDescription)")
         }
+    }
+    
+    private func loadProfileImage() {
+        guard let profileImageURL = viewModel.profilePictureURL,
+              let url = URL(string: profileImageURL) else {
+            return
+        }
+        
+        URLSession.shared.dataTask(with: url) { data, response, error in
+            if let data = data, let image = UIImage(data: data) {
+                DispatchQueue.main.async {
+                    self.profileImage = image
+                }
+            }
+        }.resume()
     }
 }
 
