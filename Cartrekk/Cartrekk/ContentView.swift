@@ -652,6 +652,8 @@ struct RouteRow: View {
     @State private var showDeleteConfirmation = false
     @State private var showPostConfirmation = false
     @State private var isLiked = false
+    @State private var showCommentsSheet = false
+    @State private var routeComments: [Comment] = []
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -688,6 +690,15 @@ struct RouteRow: View {
                 }
             }
             
+            // Route title if available
+            let routeName = route.name
+            if !routeName.isEmpty {
+                Text(routeName)
+                    .font(.title3)
+                    .fontWeight(.bold)
+                    .padding(.top, 4)
+            }
+            
             // Rest of the route information
             HStack {
                 Text(String(format: "%.2f m", route.distance))
@@ -697,33 +708,53 @@ struct RouteRow: View {
             .font(.subheadline)
             .foregroundColor(.gray)
             
-            // Map view with the route
-            let polyline = Polyline(encodedPolyline: route.polyline)
-            
-            if let locations = polyline.locations, !locations.isEmpty {
-                Map {
-                    Marker("Start",
-                           coordinate: locations.first!.coordinate)
-                    .tint(.green)
-                    
-                    Marker("End",
-                           coordinate: locations.last!.coordinate)
-                    .tint(.red)
-                    
-                    MapPolyline(coordinates: locations.map { $0.coordinate })
-                        .stroke(
-                            Color.blue.opacity(0.8),
-                            style: StrokeStyle(
-                                lineWidth: 4,
-                                lineCap: .butt,
-                                lineJoin: .round,
-                                miterLimit: 10
+            TabView {
+                // Map view with the route
+                let polyline = Polyline(encodedPolyline: route.polyline)
+                
+                if let locations = polyline.locations, !locations.isEmpty {
+                    Map {
+                        Marker("Start",
+                               coordinate: locations.first!.coordinate)
+                        .tint(.green)
+                        
+                        Marker("End",
+                               coordinate: locations.last!.coordinate)
+                        .tint(.red)
+                        
+                        MapPolyline(coordinates: locations.map { $0.coordinate })
+                            .stroke(
+                                Color.blue.opacity(0.8),
+                                style: StrokeStyle(
+                                    lineWidth: 4,
+                                    lineCap: .butt,
+                                    lineJoin: .round,
+                                    miterLimit: 10
+                                )
                             )
-                        )
+                    }
+                    .frame(height: 250)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .disabled(true)
+                    .allowsHitTesting(false)
                 }
-                .frame(height: 200)
-                .cornerRadius(10)
+
+                if let routeImages = route.routeImages, !routeImages.isEmpty {
+                    ForEach(routeImages, id: \.self) { photoUrl in
+                        AsyncImage(url: URL(string: photoUrl)) { image in
+                            image.resizable()
+                                .scaledToFit()
+                                .frame(height: 250)
+                        } placeholder: {
+                            Color.gray.opacity(0.3)
+                        }
+                    }
+                }
             }
+            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+            .frame(height: 250)
+
+            
             HStack(spacing: 20) {
                 // Likes display
                 HStack {
@@ -732,6 +763,23 @@ struct RouteRow: View {
                     Text("\(route.likes)")
                         .foregroundColor(.gray)
                 }
+                
+                // Comments display with button to view
+                Button(action: {
+                    Task {
+                        routeComments = await viewModel.loadCommentsForRoute(routeId: route.docID)
+                        showCommentsSheet = true
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "message")
+                        Text("Comments")
+                            .foregroundColor(.gray)
+                    }
+                }
+                .buttonStyle(.borderless)
+                
+                Spacer()
                 
                 // Public/Private toggle
                 Button(action: {
@@ -763,7 +811,47 @@ struct RouteRow: View {
                     }
                 }
             }
+            
             .padding(.vertical, 8)
+            
+            // Route description if available
+            let description = route.description
+            if !description.isEmpty {
+                Text(description)
+                    .font(.body)
+                    .padding(.vertical, 4)
+            }
+        }
+        
+        .sheet(isPresented: $showCommentsSheet) {
+            NavigationView {
+                List {
+                    if !routeComments.isEmpty {
+                        ForEach(routeComments) { comment in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(comment.username)
+                                    .fontWeight(.bold)
+                                Text(comment.text)
+                                Text(comment.timestamp, style: .relative)
+                                    .foregroundColor(.gray)
+                            }
+                            .font(.caption)
+                        }
+                    } else {
+                        Text("No comments yet")
+                            .foregroundColor(.gray)
+                            .italic()
+                    }
+                }
+                .navigationTitle("Comments")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Close") {
+                            showCommentsSheet = false
+                        }
+                    }
+                }
+            }
         }
     }
     
@@ -826,6 +914,18 @@ class ProfileViewModel: ObservableObject {
             print("Error toggling public status: \(error)")
         }
     }
+    
+    func loadCommentsForRoute(routeId: String) async -> [Comment] {
+        return await withCheckedContinuation { continuation in
+            db.getCommentsForRoute(routeId: routeId) { comments in
+                continuation.resume(returning: comments ?? [])
+            }
+        }
+    }
+}
+
+class TutorialManager: ObservableObject {
+    @Published var showTutorial: Bool = false
     
     func loadUserProfile(userId: String) async {
         let db = Firestore.firestore()

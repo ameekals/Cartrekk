@@ -26,7 +26,9 @@ class ExploreViewModel: ObservableObject {
                         userid: route.userId,
                         username: route.userId,
                         name: route.name,
-                        description: route.description
+                        description: route.description,
+                        distance: route.distance,
+                        duration: route.duration
                     )
                 }
                 
