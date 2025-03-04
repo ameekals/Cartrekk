@@ -22,11 +22,16 @@ struct PostView: View {
             
             HStack {
                 Text(post.username)
-                    .font(.caption)
+                    .font(.headline)
                     .foregroundColor(.gray)
                 Spacer()
             }
             .padding(.horizontal)
+            
+            Text(post.name)
+                .font(.title)
+                .fontWeight(.bold)
+                .padding(.horizontal)
 
             // Swipeable image carousel
             TabView {
@@ -72,6 +77,13 @@ struct PostView: View {
                 Text("\(post.comments.count) comments")
             }
             .padding(.horizontal)
+
+            if !post.description.isEmpty {
+                Text(post.description)
+                    .font(.body)
+                    .padding(.horizontal)
+                    .padding(.top, 4)
+            }
 
             // View All Comments Button
             if post.comments.count > 0 {
