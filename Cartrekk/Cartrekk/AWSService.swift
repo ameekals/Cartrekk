@@ -61,7 +61,7 @@ func getBucketNames() async throws -> [String] {
         }
     }
 }
-func uploadImageToS3(image: UIImage?, imageName: String, bucketName: String) async throws -> String {
+func uploadImageToS3(image: UIImage?, bucketName: String) async throws -> String {
     // Convert UIImage to Data
     guard let image = image, let imageData = image.jpegData(compressionQuality: 0.5) else {
         throw NSError(domain: "ImageConversionError", code: -1, userInfo: [NSLocalizedDescriptionKey: "Failed to convert UIImage to Data"])

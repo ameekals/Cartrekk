@@ -338,6 +338,11 @@ struct ProfileView: View {
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showPastRoutes = false
     @State private var showFriendsSheet = false
+    @State private var showImagePicker = false
+    @State private var selectedImage: UIImage?
+    @State private var isUploadingImage = false
+    
+    
     
     var body: some View {
         NavigationView {
@@ -365,12 +370,104 @@ struct ProfileView: View {
                     .padding(.trailing, 20)
                     .padding(.top, 10)
                 }
-                // Profile Image
-                Image(systemName: "person.crop.circle.fill")
-                    .resizable()
+                // Profile Image with tap gesture
+                ZStack {
+                    if let image = selectedImage {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                    } else if let profileImageURL = viewModel.profilePictureURL, !profileImageURL.isEmpty,
+                              let url = URL(string: profileImageURL),
+                              let imageData = try? Data(contentsOf: url),
+                              let uiImage = UIImage(data: imageData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 100, height: 100)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                    } else {
+                        Image(systemName: "person.crop.circle.fill")
+                            .resizable()
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.gray)
+                    }
+                    
+                    // Camera icon overlay
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Image(systemName: "camera.fill")
+                                .foregroundColor(.white)
+                                .padding(8)
+                                .background(Color.blue)
+                                .clipShape(Circle())
+                        }
+                    }
                     .frame(width: 100, height: 100)
-                    .foregroundColor(.gray)
-                    .padding(.top, 40)
+                    
+                    if isUploadingImage {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .scaleEffect(1.5)
+                            .frame(width: 100, height: 100)
+                            .background(Color.black.opacity(0.5))
+                            .cornerRadius(50)
+                    }
+                }
+                .padding(.top, 40)
+                .onTapGesture {
+                    showImagePicker = true
+                }
+                .onChange(of: selectedImage) { newImage in
+                    if let newImage = newImage, let userId = authManager.userId {
+                        isUploadingImage = true
+                        
+                        Task {
+                            do {
+                                // 1. Upload to S3
+                                let imageURL = try await uploadImageToS3(
+                                    image: newImage,
+                                    bucketName: "cartrekk-images"
+                                )
+                                
+                                // 2. Update Firestore
+                                if imageURL != "NULL" {
+                                    FirestoreManager.shared.updateUserProfilePicture(
+                                        userId: userId,
+                                        profilePictureURL: imageURL
+                                    ) { success in
+                                        DispatchQueue.main.async {
+                                            isUploadingImage = false
+                                            if success {
+                                                viewModel.profilePictureURL = imageURL
+                                            } else {
+                                                // Handle error (could show an alert)
+                                                print("Failed to update profile picture in database")
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    DispatchQueue.main.async {
+                                        isUploadingImage = false
+                                        // Handle upload failure (could show an alert)
+                                        print("Failed to upload image to S3")
+                                    }
+                                }
+                            } catch {
+                                DispatchQueue.main.async {
+                                    isUploadingImage = false
+                                    print("Error uploading profile picture: \(error)")
+                                }
+                            }
+                        }
+                    }
+                }
+                
                 
                 // Username
                 Text(authManager.username ?? "Not found")
@@ -411,6 +508,13 @@ struct ProfileView: View {
                 Spacer()
             }
             .sheet(isPresented: $showFriendsSheet) {
+               FriendsView()
+                   .environmentObject(authManager)
+           }
+           .sheet(isPresented: $showImagePicker) {
+               ImagePicker(selectedImage: $selectedImage)
+           }
+            .sheet(isPresented: $showFriendsSheet) {
                        FriendsView()
                            .environmentObject(authManager)
                    }
@@ -423,6 +527,7 @@ struct ProfileView: View {
                 Task {
                     await viewModel.loadRoutes(userId: userId)
                     garageManager.fetchTotalMiles(userId: userId)
+                    await viewModel.loadUserProfile(userId: userId)
                 }
             }
         }
@@ -769,6 +874,7 @@ struct RouteRow: View {
 // MARK: - Profile View Model
 class ProfileViewModel: ObservableObject {
     @Published var routes: [FirestoreManager.fb_Route] = []
+    @Published var profilePictureURL: String?
     private let db = FirestoreManager()
     
     @MainActor
@@ -821,141 +927,62 @@ class ProfileViewModel: ObservableObject {
 class TutorialManager: ObservableObject {
     @Published var showTutorial: Bool = false
     
-    func triggerTutorial() {
-        showTutorial = true
-    }
-}
-
-struct TutorialView: View {
-    var onComplete: () -> Void
-    @State private var currentPage = 0
-    
-    // Tutorial content - customize as needed
-    let tutorialPages = [
-        TutorialPage(
-            title: "Welcome to CarTrekk",
-            description: "Track your drives and share your adventures with friends.",
-            imageName: "car.fill"
-        ),
-        TutorialPage(
-            title: "Record Your Journeys",
-            description: "Tap the car button to start recording a new route. The button turns red while recording.",
-            imageName: "record.circle"
-        ),
-        TutorialPage(
-            title: "Capture Moments",
-            description: "Take photos during your journey to remember special moments and places.",
-            imageName: "camera.circle.fill"
-        ),
-        TutorialPage(
-            title: "Share Routes with Friends",
-            description: "Publish your routes with friends to share your adventures",
-            imageName: "map.fill"
-        ),
-        TutorialPage(
-            title: "Open Lootboxes and Earn Rewards",
-            description: "Use the miles you've driven to open lootboxes and earn rewards!",
-            imageName: "gift.fill"
-        )
-    ]
-    
-    var body: some View {
-        ZStack {
-            Color.black.edgesIgnoringSafeArea(.all)
-            
-            VStack {
-                Spacer()
-                
-                // App logo or icon
-                Image(systemName: "car.circle.fill")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 100, height: 100)
-                    .foregroundColor(.blue)
-                    .padding(.bottom, 40)
-                
-                // Current tutorial page content
-                VStack(spacing: 20) {
-                    Image(systemName: tutorialPages[currentPage].imageName)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 120, height: 120)
-                        .foregroundColor(.white)
-                        .padding()
-                    
-                    Text(tutorialPages[currentPage].title)
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
-                    
-                    Text(tutorialPages[currentPage].description)
-                        .font(.body)
-                        .multilineTextAlignment(.center)
-                        .foregroundColor(.gray)
-                        .padding(.horizontal, 40)
+    func loadUserProfile(userId: String) async {
+        let db = Firestore.firestore()
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            if let data = document.data(), let profileURL = data["profilePictureURL"] as? String {
+                DispatchQueue.main.async {
+                    self.profilePictureURL = profileURL
                 }
-                
-                Spacer()
-                
-                // Page indicators
-                HStack(spacing: 8) {
-                    ForEach(0..<tutorialPages.count, id: \.self) { index in
-                        Circle()
-                            .fill(currentPage == index ? Color.white : Color.gray.opacity(0.5))
-                            .frame(width: 8, height: 8)
-                    }
-                }
-                .padding(.bottom, 20)
-                
-                // Navigation buttons
-                HStack {
-                    if currentPage > 0 {
-                        Button(action: {
-                            withAnimation {
-                                currentPage -= 1
-                            }
-                        }) {
-                            Text("Previous")
-                                .fontWeight(.medium)
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(Color.gray.opacity(0.3))
-                                .cornerRadius(10)
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    Button(action: {
-                        withAnimation {
-                            if currentPage < tutorialPages.count - 1 {
-                                currentPage += 1
-                            } else {
-                                onComplete()
-                            }
-                        }
-                    }) {
-                        Text(currentPage < tutorialPages.count - 1 ? "Next" : "Get Started")
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .padding()
-                            .background(Color.blue)
-                            .cornerRadius(10)
-                    }
-                }
-                .padding(.horizontal, 30)
-                .padding(.bottom, 40)
             }
+        } catch {
+            print("Error loading user profile: \(error)")
         }
     }
 }
 
-// Simple data structure for tutorial pages
-struct TutorialPage {
-    let title: String
-    let description: String
-    let imageName: String
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var selectedImage: UIImage?
+    @Environment(\.presentationMode) private var presentationMode
+    
+    func makeUIViewController(context: Context) -> UIImagePickerController {
+        let picker = UIImagePickerController()
+        picker.delegate = context.coordinator
+        picker.allowsEditing = true
+        picker.sourceType = .photoLibrary
+        return picker
+    }
+    
+    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+        let parent: ImagePicker
+        
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+        
+        func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+            if let editedImage = info[.editedImage] as? UIImage {
+                parent.selectedImage = editedImage
+            } else if let originalImage = info[.originalImage] as? UIImage {
+                parent.selectedImage = originalImage
+            }
+            
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+        
+        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+            parent.presentationMode.wrappedValue.dismiss()
+        }
+    }
 }
+
 
 #Preview {
     ContentView()
