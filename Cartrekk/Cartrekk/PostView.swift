@@ -4,6 +4,7 @@ import Polyline
 
 struct PostView: View {
     @ObservedObject var viewModel: ExploreViewModel
+    @StateObject private var postViewModel = PostViewModel()
     @State private var liked: Bool
     @State private var newComment = ""
     @State private var showCommentsSheet = false
@@ -21,6 +22,18 @@ struct PostView: View {
         VStack(alignment: .leading, spacing: 12) {
             
             HStack {
+                if let profileImage = postViewModel.profileImage {
+                    Image(uiImage: profileImage)
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                } else {
+                    Image(systemName: "person.circle.fill")
+                        .resizable()
+                        .frame(width: 40, height: 40)
+                        .foregroundColor(.gray)
+                }
                 Text(post.username)
                     .font(.headline)
                     .foregroundColor(.gray)
@@ -50,6 +63,9 @@ struct PostView: View {
                             .frame(height: 250)
                     }
                 }
+            }
+            .onAppear {
+               postViewModel.loadProfilePicture(userId: post.userid)
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
             .frame(height: 250)
@@ -236,5 +252,37 @@ struct RoutePreviewMap: View {
             }
             
         }
+    }
+}
+
+class PostViewModel: ObservableObject {
+    @Published var profileImage: UIImage?
+    private var imageLoadTask: Task<Void, Never>?
+    private let firestoreManager = FirestoreManager.shared
+    
+    func loadProfilePicture(userId: String) {
+        // Cancel any existing task
+        imageLoadTask?.cancel()
+        
+        // Create a new task to load the profile picture
+        imageLoadTask = Task {
+            do {
+                // Use the abstracted method from FirestoreManager
+                let image = try await firestoreManager.getUserProfileImage(userId: userId)
+                
+                // Update the UI on the main thread
+                if !Task.isCancelled {
+                    await MainActor.run {
+                        self.profileImage = image
+                    }
+                }
+            } catch {
+                print("Error loading profile picture: \(error)")
+            }
+        }
+    }
+    
+    deinit {
+        imageLoadTask?.cancel()
     }
 }

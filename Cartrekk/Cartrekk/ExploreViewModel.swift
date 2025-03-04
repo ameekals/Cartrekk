@@ -1,8 +1,11 @@
 import Foundation
+import SwiftUI
 
 class ExploreViewModel: ObservableObject {
     @Published var posts: [Post] = []
     private let db = FirestoreManager()
+    @Published var profileImage: UIImage?
+    private var imageLoadTask: Task<Void, Never>?
 
     @MainActor
     func loadFriendsPosts(userId: String) async {
@@ -54,6 +57,7 @@ class ExploreViewModel: ObservableObject {
             }
         }
     }
+    
     
     @MainActor
     func loadCommentsForPost(post: Post) async {

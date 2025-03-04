@@ -108,6 +108,27 @@ class FirestoreManager{
         }
     }
     
+    func getProfilePictureURL(userId: String) async throws -> String? {
+        let document = try await db.collection("users").document(userId).getDocument()
+        
+        guard let data = document.data(),
+              let profileURL = data["profilePictureURL"] as? String,
+              !profileURL.isEmpty else {
+            return nil
+        }
+        
+        return profileURL
+    }
+
+    func getUserProfileImage(userId: String) async throws -> UIImage? {
+        guard let profileURL = try await getProfilePictureURL(userId: userId) else {
+            return nil
+        }
+        
+        return try await getImageFromS3(imageURL: profileURL)
+    }
+    
+    
     func fetchTotalDistanceForUser(userId: String, completion: @escaping (Double?) -> Void) {
         let userRef = db.collection("users").document(userId) // Reference to the user document
 
