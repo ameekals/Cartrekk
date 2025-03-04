@@ -16,9 +16,9 @@ class GarageManager: ObservableObject {
     @Published var unlockedCars: [String] = []
 
     private let allCarsByRarity: [LootboxTier: [String]] = [
-        .common: ["car3"],
-        .uncommon: ["car2"],
-        .rare: ["car1"]
+        .common: ["common_redpink_truck"],
+        .uncommon: ["uncommon_yellow_car_stripe"],
+        .rare: ["rare_blue_car_hat"]
 //        .epic: ["car4"],
 //        .legendary: ["car5"]
     ]

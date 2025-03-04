@@ -148,6 +148,20 @@ class FirestoreManager{
         }
     }
     
+//    func addCarToInventory(userId: String, carName: String, completion: @escaping (Bool, String) -> Void) {
+//        let userRef = db.collection("users").document(userId)
+//
+//        userRef.updateData([
+//            "inventory": FieldValue.arrayUnion([carName])
+//        ]) { error in
+//            if let error = error {
+//                completion(false, "Error adding car: \(error.localizedDescription)")
+//            } else {
+//                completion(true, "Successfully added \(carName) to inventory!")
+//            }
+//        }
+//    }
+
     // 🔹 Function to save route details
     func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, completion: @escaping () -> Void) {
         let routeRef = db.collection("routes").document(routeId)
