@@ -4,11 +4,10 @@ class ExploreViewModel: ObservableObject {
     @Published var posts: [Post] = []
     private let db = FirestoreManager()
 
-
     @MainActor
-    func loadPublicPosts() async {
+    func loadFriendsPosts(userId: String) async {
         let posts = await withCheckedContinuation { continuation in
-            db.getPublicRoutes { routes in
+            db.getFriendsPosts(userId: userId) { routes in
                 let sortedRoutes = (routes ?? []).sorted(by: { $0.createdAt > $1.createdAt })
                 
                 // Convert fb_Route to Post
@@ -22,7 +21,7 @@ class ExploreViewModel: ObservableObject {
                         ),
                         photos: route.routeImages!,
                         likes: route.likes,
-                        comments: [], // You might want to load comments separately
+                        comments: [],
                         polyline: route.polyline,
                         userid: route.userId,
                         username: route.userId,
@@ -40,11 +39,11 @@ class ExploreViewModel: ObservableObject {
                         }
                     }
                 }
-
+                
                 continuation.resume(returning: posts)
             }
         }
-            
+        
         self.posts = posts
         
         await withTaskGroup(of: Void.self) { group in

@@ -13,6 +13,8 @@ class FirestoreManager{
     static let shared = FirestoreManager()
     let db = Firestore.firestore()
     
+    
+    
     func getRoutesForUser(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
         let routesRef = db.collection("routes")
         
@@ -269,6 +271,72 @@ class FirestoreManager{
         }
     }
     
+    func getFriendsPosts(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
+        // First, get the user's friends list
+        db.collection("users").document(userId).getDocument { snapshot, error in
+            if let error = error {
+                print("Error fetching user data: \(error)")
+                completion(nil)
+                return
+            }
+            
+            guard let data = snapshot?.data(),
+                  let friendIds = data["friends"] as? [String] else {
+                print("No friends found or invalid data")
+                completion([])
+                return
+            }
+            
+            // If the user has no friends, return empty array
+            if friendIds.isEmpty {
+                completion([])
+                return
+            }
+            
+            // Now query for public routes from these friends
+            let routesRef = self.db.collection("routes")
+            routesRef
+                .whereField("userid", in: friendIds)
+                .whereField("public", isEqualTo: true)
+                .order(by: "createdAt", descending: true)
+                .limit(to: 20)
+                .getDocuments { (snapshot, error) in
+                    // The rest is the same as your getPublicRoutes function
+                    if let error = error {
+                        print("Error fetching friends' routes: \(error)")
+                        completion(nil)
+                        return
+                    }
+                    
+                    guard let documents = snapshot?.documents else {
+                        print("No friend routes found")
+                        completion([])
+                        return
+                    }
+                    
+                    let routes: [fb_Route] = documents.compactMap { document in
+                        // Same parsing logic as in getPublicRoutes
+                        let data = document.data()
+                        return fb_Route(
+                            docID: document.documentID,
+                            createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
+                            distance: data["distance"] as? Double ?? 0.0,
+                            duration: data["duration"] as? Double ?? 0.0,
+                            likes: data["likes"] as? Int ?? 0,
+                            polyline: data["polyline"] as? String ?? "",
+                            isPublic: data["public"] as? Bool ?? false,
+                            routeImages: data["routeImages"] as? [String] ?? [],
+                            userId: data["userid"] as? String ?? "",
+                            description: data["description"] as? String ?? "",
+                            name: data["name"] as? String ?? ""
+                        )
+                    }
+                    
+                    completion(routes)
+                }
+        }
+    }
+    
     func getCommentsForRoute(routeId: String, completion: @escaping ([Comment]?) -> Void) {
         let commentsRef = db.collection("routes").document(routeId).collection("comments")
         
@@ -450,6 +518,219 @@ class FirestoreManager{
         let name: String
     }
     
+    func searchUsers(query: String, currentUserId: String, completion: @escaping ([User]) -> Void) {
+        guard !query.isEmpty else {
+            completion([])
+            return
+        }
+        print("sending username search query")
+        
+        db.collection("usernames")
+            .whereField(FieldPath.documentID(), isGreaterThanOrEqualTo: query)
+            .whereField(FieldPath.documentID(), isLessThanOrEqualTo: query + "\u{f8ff}")
+            .limit(to: 10)
+            .getDocuments { (snapshot, error) in
+                if let error = error {
+                    print("Error searching for users: \(error.localizedDescription)")
+                    completion([])
+                    return
+                }
+                
+                var users: [User] = []
+                
+                for document in snapshot?.documents ?? [] {
+                    let username = document.documentID
+                    let userData = document.data()
+                    if let userId = userData["userid"] as? String,
+                       userId != currentUserId {  // Don't show current user
+                        users.append(User(id: userId, username: username))
+                    }
+                }
+                
+                completion(users)
+            }
+    }
+        
+    // Send friend request
+    func sendFriendRequest(from senderId: String, to username: String, completion: @escaping (Bool, String?) -> Void) {
+        // First get the user ID from the username
+        db.collection("usernames").document(username).getDocument { [weak self] (snapshot, error) in
+            guard let self = self else { return }
+            
+            if let error = error {
+                completion(false, "Error checking username: \(error.localizedDescription)")
+                return
+            }
+            
+            guard let snapshot = snapshot, snapshot.exists else {
+                completion(false, "User not found")
+                return
+            }
+            
+            let data = snapshot.data() ?? [:]
+            guard let targetUserId = data["userid"] as? String else {
+                completion(false, "User not found")
+                return
+            }
+            
+            // Don't allow sending request to yourself
+            if targetUserId == senderId {
+                completion(false, "You cannot send a friend request to yourself")
+                return
+            }
+            
+            // Now update the target user's pending_friends array
+            let userRef = self.db.collection("users").document(targetUserId)
+            userRef.updateData([
+                "pending_friends": FieldValue.arrayUnion([senderId])
+            ]) { error in
+                if let error = error {
+                    completion(false, "Error sending friend request: \(error.localizedDescription)")
+                } else {
+                    completion(true, nil)
+                }
+            }
+        }
+    }
+    
+    // Accept friend request
+    func acceptFriendRequest(currentUserId: String, senderId: String, completion: @escaping (Bool, String?) -> Void) {
+        let batch = db.batch()
+        
+        // Add sender to current user's friends list
+        let currentUserRef = db.collection("users").document(currentUserId)
+        batch.updateData([
+            "friends": FieldValue.arrayUnion([senderId]),
+            "pending_friends": FieldValue.arrayRemove([senderId])
+        ], forDocument: currentUserRef)
+        
+        // Add current user to sender's friends list
+        let senderRef = db.collection("users").document(senderId)
+        batch.updateData([
+            "friends": FieldValue.arrayUnion([currentUserId])
+        ], forDocument: senderRef)
+        
+        // Commit the batch
+        batch.commit { error in
+            if let error = error {
+                completion(false, "Error accepting friend request: \(error.localizedDescription)")
+            } else {
+                completion(true, nil)
+            }
+        }
+    }
+    
+    // Decline friend request
+    func declineFriendRequest(currentUserId: String, senderId: String, completion: @escaping (Bool, String?) -> Void) {
+        let userRef = db.collection("users").document(currentUserId)
+        userRef.updateData([
+            "pending_friends": FieldValue.arrayRemove([senderId])
+        ]) { error in
+            if let error = error {
+                completion(false, "Error declining friend request: \(error.localizedDescription)")
+            } else {
+                completion(true, nil)
+            }
+        }
+    }
+    
+    // Load friends list
+    func loadFriends(userId: String, completion: @escaping ([Friend]) -> Void) {
+        db.collection("users").document(userId).getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("Error loading friends: \(error.localizedDescription)")
+                completion([])
+                return
+            }
+            
+            guard let snapshot = snapshot else {
+                completion([])
+                return
+            }
+            let data = snapshot.data() ?? [:]
+            guard let friendIds = data["friends"] as? [String] else {
+                completion([])
+                return
+            }
+            
+            
+            if friendIds.isEmpty {
+                completion([])
+                return
+            }
+            
+            // Fetch user details for each friend ID
+            var friends: [Friend] = []
+            let dispatchGroup = DispatchGroup()
+            
+            for friendId in friendIds {
+                dispatchGroup.enter()
+                self.db.collection("users").document(friendId).getDocument { friendSnapshot, error in
+                    defer { dispatchGroup.leave() }
+                    
+                    if let friendData = friendSnapshot?.data(),
+                       let username = friendData["username"] as? String {
+                        friends.append(Friend(id: friendId, username: username))
+                    }
+                }
+            }
+            
+            dispatchGroup.notify(queue: .main) {
+                completion(friends)
+            }
+        }
+    }
+    
+    // Load pending friend requests
+    func loadPendingRequests(userId: String, completion: @escaping ([FriendRequest]) -> Void) {
+        db.collection("users").document(userId).getDocument { [weak self] snapshot, error in
+            guard let self = self else { return }
+            
+            if let error = error {
+                print("Error loading requests: \(error.localizedDescription)")
+                completion([])
+                return
+            }
+            
+            guard let snapshot = snapshot else {
+                completion([])
+                return
+            }
+            let data = snapshot.data() ?? [:]
+            guard let pendingIds = data["pending_friends"] as? [String] else {
+                completion([])
+                return
+            }
+            
+            if pendingIds.isEmpty {
+                completion([])
+                return
+            }
+            
+            // Fetch user details for each pending friend ID
+            var requests: [FriendRequest] = []
+            let dispatchGroup = DispatchGroup()
+            
+            for senderId in pendingIds {
+                dispatchGroup.enter()
+                self.db.collection("users").document(senderId).getDocument { friendSnapshot, error in
+                    defer { dispatchGroup.leave() }
+                    
+                    if let friendData = friendSnapshot?.data(),
+                       let username = friendData["username"] as? String {
+                        requests.append(FriendRequest(id: UUID().uuidString, username: username, senderId: senderId))
+                    }
+                }
+            }
+            
+            dispatchGroup.notify(queue: .main) {
+                completion(requests)
+            }
+        }
+    }
+
 
 }
 

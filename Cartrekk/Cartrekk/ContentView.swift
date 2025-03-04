@@ -112,6 +112,7 @@ class AuthenticationManager: ObservableObject {
                     "distance_used" : 0,
                     "email" : email,
                     "friends" : [],
+                    "pending_friends" : [],
                     "inventory" : [],
                     "profilePictureURL" : "",
                     "total_distance" : 0,
@@ -336,10 +337,34 @@ struct ProfileView: View {
     @ObservedObject var garageManager = GarageManager.shared
     @StateObject private var viewModel = ProfileViewModel()
     @State private var showPastRoutes = false
+    @State private var showFriendsSheet = false
     
     var body: some View {
         NavigationView {
             VStack {
+                // Header with profile image and friends button
+                HStack {
+                    Spacer()
+                    // Friends button in top right
+                    Button(action: {
+                        print("Friends button tapped")
+                        showFriendsSheet = true
+                    }) {
+                        HStack {
+                            Image(systemName: "person.2.fill")
+                                .font(.title2)
+                            Text("Friends")
+                                .font(.headline)
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.blue.opacity(0.8))
+                        .cornerRadius(20)
+                    }
+                    .padding(.trailing, 20)
+                    .padding(.top, 10)
+                }
                 // Profile Image
                 Image(systemName: "person.crop.circle.fill")
                     .resizable()
@@ -385,6 +410,10 @@ struct ProfileView: View {
                 
                 Spacer()
             }
+            .sheet(isPresented: $showFriendsSheet) {
+                       FriendsView()
+                           .environmentObject(authManager)
+                   }
             .frame(maxWidth: .infinity)
             .background(Color.black.edgesIgnoringSafeArea(.all))
             .navigationBarHidden(true)
