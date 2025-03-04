@@ -490,7 +490,6 @@ struct ProfileView: View {
                         ProfileButton(title: "Past Routes", icon: "map")
                     }
                     
-                    ProfileButton(title: "Settings", icon: "gearshape")
                     
                     NavigationLink(destination: GarageView()) {
                         ProfileButton(title: "Garage", icon: "door.garage.closed")
