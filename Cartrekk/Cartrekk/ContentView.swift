@@ -922,24 +922,20 @@ class ProfileViewModel: ObservableObject {
             }
         }
     }
-}
-
-class TutorialManager: ObservableObject {
-    @Published var showTutorial: Bool = false
     
     func loadUserProfile(userId: String) async {
-        let db = Firestore.firestore()
-        do {
-            let document = try await db.collection("users").document(userId).getDocument()
-            if let data = document.data(), let profileURL = data["profilePictureURL"] as? String {
-                DispatchQueue.main.async {
-                    self.profilePictureURL = profileURL
+            let db = Firestore.firestore()
+            do {
+                let document = try await db.collection("users").document(userId).getDocument()
+                if let data = document.data(), let profileURL = data["profilePictureURL"] as? String {
+                    DispatchQueue.main.async {
+                        self.profilePictureURL = profileURL
+                    }
                 }
+            } catch {
+                print("Error loading user profile: (error)")
             }
-        } catch {
-            print("Error loading user profile: \(error)")
         }
-    }
 }
 
 struct ImagePicker: UIViewControllerRepresentable {
