@@ -70,24 +70,28 @@ class GarageManager: ObservableObject {
             }
         }
 
-        let rarity = rollForRarity()
-        guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else {
-            print("No cars found for rarity: \(rarity)")
-            return "Failed to unlock a car!"
+        var triedRarities = Set<LootboxTier>()
+
+        while triedRarities.count < allCarsByRarity.keys.count {
+            let rarity = rollForRarity()
+            triedRarities.insert(rarity)
+
+            guard let availableCars = allCarsByRarity[rarity]?.filter({ !unlockedCars.contains($0) }),
+                  let car = availableCars.randomElement() else {
+                print("No cars found for rarity: \(rarity)")
+                continue
+            }
+
+            unlockedCars.append(car)
+
+            FirestoreManager.shared.addCarToInventory(userId: userId, carName: car) { success, message in
+                print(message)
+            }
+
+            return "You unlocked \(car)!"
         }
 
-        if unlockedCars.contains(car) {
-            return "You've already unlocked \(car)!"
-        }
-
-        unlockedCars.append(car)
-
-        // Persist in Firestore
-        FirestoreManager.shared.addCarToInventory(userId: userId, carName: car) { success, message in
-            print(message)
-        }
-
-        return "You unlocked \(car)!"
+        return "No more cars available to unlock!"
     }
 
     private func rollForRarity() -> LootboxTier {
