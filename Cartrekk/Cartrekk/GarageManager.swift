@@ -16,11 +16,9 @@ class GarageManager: ObservableObject {
     @Published var unlockedCars: [String] = []
 
     private let allCarsByRarity: [LootboxTier: [String]] = [
-        .common: ["common_redpink_truck"],
-        .uncommon: ["uncommon_yellow_car_stripe"],
-        .rare: ["rare_blue_car_hat"]
-//        .epic: ["car4"],
-//        .legendary: ["car5"]
+        .rare: ["redpink_truck"],
+        .epic: ["yellow_car_stripe"],
+        .legendary: ["blue_car_hat"]
     ]
 
     private init() {
@@ -39,18 +37,24 @@ class GarageManager: ObservableObject {
             }
             FirestoreManager.shared.fetchUsableDistanceForUser(userId: userId) { [weak self] used_distance in
                 guard let self = self, let used_distance = used_distance else {
-                    print("Failed to fetch total miles.")
+                    print("Failed to fetch usable miles.")
                     return
                 }
                 DispatchQueue.main.async {
                     self.totalMiles = totalDistance
-                    self.usableMiles = totalDistance - used_distance // Initially set usable miles to total miles
-                    print("Fetched total miles: \(totalDistance)")
+                    self.usableMiles = totalDistance - used_distance
                 }
             }
         }
+
+        // Fetch inventory from Firestore
+        FirestoreManager.shared.fetchUserInventory(userId: userId) { [weak self] inventory in
+            DispatchQueue.main.async {
+                self?.unlockedCars = inventory
+            }
+        }
     }
-    
+
     func unlockCar(userId: String) -> String? {
         let minimum_miles_to_unlock = 1.0
         guard usableMiles >= minimum_miles_to_unlock else { return "Not enough miles to unlock a car!" }
@@ -61,22 +65,27 @@ class GarageManager: ObservableObject {
             distanceUsed: minimum_miles_to_unlock
         ) { error in
             if let error = error {
-                print("Failed to update total distance: (error)")
-            } else {
-                print("Successfully updated total distance")
+                print("Failed to update total distance: \(error)")
             }
         }
+
         let rarity = rollForRarity()
-//        guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else { return nil }
         guard let availableCars = allCarsByRarity[rarity], let car = availableCars.randomElement() else {
+            print("No cars found for rarity: \(rarity)")
             return "Failed to unlock a car!"
         }
-        
+
         if unlockedCars.contains(car) {
             return "You've already unlocked \(car)!"
         }
 
         unlockedCars.append(car)
+
+        // Persist in Firestore
+        FirestoreManager.shared.addCarToInventory(userId: userId, carName: car) { success, message in
+            print(message)
+        }
+
         return "You unlocked \(car)!"
     }
 

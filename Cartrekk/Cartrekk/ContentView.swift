@@ -64,6 +64,7 @@ class AuthenticationManager: ObservableObject {
                             self?.username = username
                             self?.needsUsername = username == nil
                         }
+                        GarageManager.shared.fetchTotalMiles(userId: userId)
                     }
                 }
             }
