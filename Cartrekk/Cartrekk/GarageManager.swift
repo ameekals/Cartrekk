@@ -14,6 +14,7 @@ class GarageManager: ObservableObject {
     @Published var totalMiles: Double = 0.0
     @Published var usableMiles: Double = 0.0
     @Published var unlockedCars: [String] = []
+    @Published var equippedCar: String? = nil
 
     private let allCarsByRarity: [LootboxTier: [String]] = [
         .uncommon: ["redpink_truck"],
@@ -53,6 +54,27 @@ class GarageManager: ObservableObject {
             DispatchQueue.main.async {
                 self?.unlockedCars = inventory
             }
+        }
+    }
+    
+    func fetchEquippedCar(userId: String) {
+        FirestoreManager.shared.fetchEquippedCar(userId: userId) { [weak self] equippedCar in
+            DispatchQueue.main.async {
+                self?.equippedCar = equippedCar
+            }
+        }
+    }
+
+    func equipCar(userId: String, carName: String) {
+        guard unlockedCars.contains(carName) else { return }
+
+        FirestoreManager.shared.equipCar(userId: userId, carName: carName) { [weak self] success, message in
+            if success {
+                DispatchQueue.main.async {
+                    self?.equippedCar = carName
+                }
+            }
+            print(message)
         }
     }
 

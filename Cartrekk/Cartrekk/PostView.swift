@@ -9,6 +9,7 @@ struct PostView: View {
     @State private var newComment = ""
     @State private var showCommentsSheet = false
     @EnvironmentObject var authManager: AuthenticationManager
+    @ObservedObject var garageManager = GarageManager.shared
     
     var post: Post
 
@@ -19,9 +20,7 @@ struct PostView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            
-           
+            VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         if let profileImage = postViewModel.profileImage {
@@ -39,11 +38,9 @@ struct PostView: View {
                         Text(post.username)
                             .font(.headline)
                             .foregroundColor(.gray)
-                        
                     }
                         
                     // Username and post name aligned to the left
-                    
                     Text(post.name)
                         .font(.title)
                         .fontWeight(.bold)
@@ -61,29 +58,42 @@ struct PostView: View {
                 }
                 .padding(.horizontal)
                 
-                // Swipeable image carousel
-                TabView {
-                    RoutePreviewMap(post: post)
-                        .frame(height: 250)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    
-                    ForEach(post.photos, id: \.self) { photoUrl in
-                        AsyncImage(url: URL(string: photoUrl)) { image in
-                            image.resizable()
-                                .scaledToFit()
-                                .frame(height: 250)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        } placeholder: {
-                            Color.gray.opacity(0.3)
-                                .frame(height: 250)
+                ZStack(alignment: .bottomTrailing) {
+                    TabView {
+                        RoutePreviewMap(post: post)
+                            .frame(height: 250)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        
+                        ForEach(post.photos, id: \ .self) { photoUrl in
+                            AsyncImage(url: URL(string: photoUrl)) { image in
+                                image.resizable()
+                                    .scaledToFit()
+                                    .frame(height: 250)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            } placeholder: {
+                                Color.gray.opacity(0.3)
+                                    .frame(height: 250)
+                            }
                         }
                     }
+                    .onAppear {
+                        postViewModel.loadProfilePicture(userId: post.userid)
+                    }
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+                    .frame(height: 250)
+                    
+                    if let equippedCar = garageManager.equippedCar, !equippedCar.isEmpty {
+                        Image(equippedCar)
+                            .resizable()
+                            .frame(width: 50, height: 50)
+                            .clipShape(Circle())
+                            .padding(8)
+                            .background(Color.white.opacity(0.7))
+                            .clipShape(Circle())
+                            .padding(.trailing, 10)
+                            .padding(.bottom, 10)
+                    }
                 }
-                .onAppear {
-                    postViewModel.loadProfilePicture(userId: post.userid)
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-                .frame(height: 250)
                 
                 // Like & Comment Section
                 HStack {

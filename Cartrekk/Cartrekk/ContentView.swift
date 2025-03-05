@@ -118,6 +118,7 @@ class AuthenticationManager: ObservableObject {
                     "profilePictureURL" : "",
                     "total_distance" : 0,
                     "username": username,
+                    "equiped_car" : ""
                     ],
                     merge: true) { error in
                     if let error = error {

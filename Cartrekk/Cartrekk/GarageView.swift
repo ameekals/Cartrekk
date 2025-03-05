@@ -29,7 +29,7 @@ struct GarageView: View {
             }
 
             // Unlock Button
-            Button(action: {unlockCar(userId: authManager.userId!)}) {
+            Button(action: { unlockCar(userId: authManager.userId!) }) {
                 Text("Unlock Car (\(garageManager.usableMiles, specifier: "%.0f") Points)")
                     .font(.title2)
                     .padding()
@@ -40,6 +40,27 @@ struct GarageView: View {
                     .disabled(garageManager.usableMiles < 100)
             }
             .padding()
+
+            // Equip/Unequip Button
+            if !garageManager.unlockedCars.isEmpty {
+                let currentCar = garageManager.unlockedCars[currentCarIndex]
+                Button(action: {
+                    if garageManager.equippedCar == currentCar {
+                        garageManager.equipCar(userId: authManager.userId ?? "", carName: "")
+                    } else {
+                        garageManager.equipCar(userId: authManager.userId ?? "", carName: currentCar)
+                    }
+                }) {
+                    Text(garageManager.equippedCar == currentCar ? "Unequip Car" : "Equip Car")
+                        .font(.title2)
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(garageManager.equippedCar == currentCar ? Color.red : Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
+                .padding()
+            }
 
             // Navigation Arrows (Only if cars are unlocked)
             if !garageManager.unlockedCars.isEmpty {
@@ -65,6 +86,9 @@ struct GarageView: View {
         }
         .onAppear {
             loadCarModel()
+            if let userId = authManager.userId {
+                garageManager.fetchEquippedCar(userId: userId)
+            }
         }
         .alert(isPresented: $showUnlockAlert) {
             Alert(
