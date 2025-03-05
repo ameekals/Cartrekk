@@ -30,6 +30,10 @@ class GarageManager: ObservableObject {
         }
     }
 
+    func getAllCars() -> [String] {
+        return ["redpink_truck", "yellow_car_stripe", "ef", "blue_car_hat"]
+    }
+    
     func fetchTotalMiles(userId: String) {
         FirestoreManager.shared.fetchTotalDistanceForUser(userId: userId) { [weak self] totalDistance in
             guard let self = self, let totalDistance = totalDistance else {
