@@ -45,7 +45,6 @@ struct PostView: View {
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    // Additional information in an evenly spaced row
                     HStack {
                         Text(String(format: "%.2f m", post.distance))
                         Spacer()
@@ -83,13 +82,14 @@ struct PostView: View {
                     .frame(height: 250)
                     
                     if let equippedCar = garageManager.equippedCar, !equippedCar.isEmpty {
-                        Image(equippedCar)
+                        Image("\(equippedCar)2d")
                             .resizable()
-                            .frame(width: 50, height: 50)
-                            .clipShape(Circle())
+//                            .frame(width: 50, height: 50)
+                            .frame(width: 150, height: 100)
+//                            .clipShape(Circle())
                             .padding(8)
-                            .background(Color.white.opacity(0.7))
-                            .clipShape(Circle())
+//                            .background(Color.white.opacity(0.7))
+//                            .clipShape(Circle())
                             .padding(.trailing, 10)
                             .padding(.bottom, 10)
                     }
@@ -156,7 +156,6 @@ struct PostView: View {
             }
             .padding(.vertical, 8)
             .onAppear {
-                // Check if user liked this post when view appears
                 viewModel.checkUserLikeStatus(
                     postId: post.id,
                     userId: authManager.userId ?? ""
