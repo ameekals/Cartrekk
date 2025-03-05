@@ -651,6 +651,7 @@ struct RouteRow: View {
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var isCurrentlyPublic: Bool
+    @State private var showExpandedMap = false
     // Add a callback for deletion
     var onDelete: () -> Void
     
@@ -724,30 +725,78 @@ struct RouteRow: View {
                 let polyline = Polyline(encodedPolyline: route.polyline)
                 
                 if let locations = polyline.locations, !locations.isEmpty {
-                    Map {
-                        Marker("Start",
-                               coordinate: locations.first!.coordinate)
-                        .tint(.green)
-                        
-                        Marker("End",
-                               coordinate: locations.last!.coordinate)
-                        .tint(.red)
-                        
-                        MapPolyline(coordinates: locations.map { $0.coordinate })
-                            .stroke(
-                                Color.blue.opacity(0.8),
-                                style: StrokeStyle(
-                                    lineWidth: 4,
-                                    lineCap: .butt,
-                                    lineJoin: .round,
-                                    miterLimit: 10
+                    ZStack {
+                        Map {
+                            Marker("Start",
+                                   coordinate: locations.first!.coordinate)
+                            .tint(.green)
+                            
+                            Marker("End",
+                                   coordinate: locations.last!.coordinate)
+                            .tint(.red)
+                            
+                            MapPolyline(coordinates: locations.map { $0.coordinate })
+                                .stroke(
+                                    Color.blue.opacity(0.8),
+                                    style: StrokeStyle(
+                                        lineWidth: 4,
+                                        lineCap: .butt,
+                                        lineJoin: .round,
+                                        miterLimit: 10
+                                    )
                                 )
-                            )
+                        }
+                        .frame(height: 250)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .allowsHitTesting(false) // Disable direct map interaction in carousel
+                        
+                        // Add a transparent overlay button that fills the entire map area
+                        Button(action: {
+                            showExpandedMap = true
+                        }) {
+                            Rectangle()
+                                .fill(Color.clear)
+                                .contentShape(Rectangle()) // Important for hit testing
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                     .frame(height: 250)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .disabled(true)
-                    .allowsHitTesting(false)
+                    // Present a full-screen map when tapped
+                    .fullScreenCover(isPresented: $showExpandedMap) {
+                        NavigationView {
+                            Map {
+                                Marker("Start",
+                                       coordinate: locations.first!.coordinate)
+                                .tint(.green)
+                                
+                                Marker("End",
+                                       coordinate: locations.last!.coordinate)
+                                .tint(.red)
+                                
+                                MapPolyline(coordinates: locations.map { $0.coordinate })
+                                    .stroke(
+                                        Color.blue.opacity(0.8),
+                                        style: StrokeStyle(
+                                            lineWidth: 4,
+                                            lineCap: .butt,
+                                            lineJoin: .round,
+                                            miterLimit: 10
+                                        )
+                                    )
+                            }
+                            .navigationTitle("Route Map")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button("Close") {
+                                        showExpandedMap = false
+                                    }
+                                }
+                            }
+                            .ignoresSafeArea(.all, edges: .bottom)
+                        }
+                    }
                 }
 
                 if let routeImages = route.routeImages, !routeImages.isEmpty {
