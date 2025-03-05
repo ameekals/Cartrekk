@@ -9,7 +9,7 @@ import FirebaseFirestore
 import FirebaseCore
 
 
-class FirestoreManager{
+class FirestoreManager: ObservableObject{
     static let shared = FirestoreManager()
     let db = Firestore.firestore()
     
@@ -44,14 +44,14 @@ class FirestoreManager{
                     routeImages: data["routeImages"] as? [String] ?? [],
                     userId: data["userid"] as? String ?? "",
                     description: data["description"] as? String ?? "",
-                    name: data["name"] as? String ?? ""
+                    name: data["name"] as? String ?? "",
+                    equipedCar: data[""] as? String ?? "ef"
                 )
             }
             
             completion(routes)
         }
     }
-    
     func incrementUserTotalDistance(userId: String, additionalDistance: Double, completion: @escaping (Error?) -> Void) {
         let userRef = db.collection("users").document(userId)
         
@@ -207,32 +207,70 @@ class FirestoreManager{
             completion(inventory)
         }
     }
+    
+    func equipCar(userId: String, carName: String, completion: @escaping (Bool, String) -> Void) {
+        let userRef = db.collection("users").document(userId)
+        print("equipinng car ", carName)
+        userRef.updateData(["equippedCar": carName]) { error in
+            if let error = error {
+                completion(false, "Error equipping car: \(error.localizedDescription)")
+            } else {
+                completion(true, "Successfully equipped \(carName)!")
+            }
+        }
+    }
+
+    func fetchEquippedCar(userId: String, completion: @escaping (String?) -> Void) {
+        let userRef = db.collection("users").document(userId)
+
+        userRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error fetching equipped car: \(error)")
+                completion(nil)
+                return
+            }
+
+            let equippedCar = document?.data()?["equippedCar"] as? String
+            
+            print("fetching car", equippedCar)
+            completion(equippedCar)
+        }
+    }
+    
 
     // 🔹 Function to save route details
     func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, routeName: String, routeDescription: String, completion: @escaping () -> Void) {
         let routeRef = db.collection("routes").document(routeId)
 
-        let data: [String: Any] = [
-            "createdAt": Timestamp(date: Date()),
-            "distance": distance,
-            "duration": duration,
-            "likes": likes,
-            "polyline": polyline,
-            "public": isPublic,
-            "routeImages": routeImages as Any,
-            "userid": userId,
-            "name": routeName,
-            "description": routeDescription
-        ]
+        fetchEquippedCar(userId: userId) { equippedCar in
+            let data: [String: Any] = [
+                "createdAt": Timestamp(date: Date()),
+                "distance": distance,
+                "duration": duration,
+                "likes": likes,
+                "polyline": polyline,
+                "public": isPublic,
+                "routeImages": routeImages as Any,
+                "userid": userId,
+                "name": routeName,
+                "description": routeDescription,
+                "equippedCar": equippedCar ?? "ef"
+                // Now the data is available here
+            ]
 
-        routeRef.setData(data) { error in
-            if let error = error {
-                print("Error saving route: \(error)")
-            } else {
-                print("Route successfully saved!")
+            // Now you can use `data` however you need
+            routeRef.setData(data) { error in
+                if let error = error {
+                    print("Error saving route: \(error)")
+                } else {
+                    print("Route successfully saved!")
+                }
+                completion()
             }
-            completion()
+            
         }
+
+        
     }
     
     func updateRouteImages(routeId: String, newImageUrl: String, completion: @escaping (Bool) -> Void) {
@@ -336,7 +374,9 @@ class FirestoreManager{
                     routeImages: data["routeImages"] as? [String] ?? [],
                     userId: data["userid"] as? String ?? "",
                     description: data["description"] as? String ?? "",
-                    name: data["name"] as? String ?? ""
+                    name: data["name"] as? String ?? "",
+                    equipedCar: data["equipedCar"] as? String ?? ""
+                    
                 )
             }
             
@@ -401,7 +441,9 @@ class FirestoreManager{
                             routeImages: data["routeImages"] as? [String] ?? [],
                             userId: data["userid"] as? String ?? "",
                             description: data["description"] as? String ?? "",
-                            name: data["name"] as? String ?? ""
+                            name: data["name"] as? String ?? "",
+                            //check thisw
+                            equipedCar: data["equippedCar"] as? String ?? ""
                         )
                     }
                     
@@ -473,7 +515,25 @@ class FirestoreManager{
             }
         }
     }
-
+    func getCarForPost(routeId: String, userId: String, completion: @escaping (String) -> Void) {
+        let car = db.collection("routes").document(routeId)
+        
+        car.getDocument { (document, error) in
+            if let error = error {
+                print("Error fetching car: \(error)")
+                completion("")
+                return
+            }
+            
+            if let document = document, document.exists {
+                let equippedCar = document.data()?["equipedCar"] as? String ?? ""
+                completion(equippedCar)
+            } else {
+                completion("")
+            }
+        }
+        
+    }
     func handleLike(routeId: String, userId: String, completion: @escaping (Error?) -> Void) {
         let likeRef = db.collection("routes").document(routeId).collection("likes").document(userId)
         let routeRef = db.collection("routes").document(routeId)
@@ -589,6 +649,7 @@ class FirestoreManager{
         let userId: String
         let description: String
         let name: String
+        let equipedCar: String
     }
     
     func searchUsers(query: String, currentUserId: String, completion: @escaping ([User]) -> Void) {

@@ -31,9 +31,12 @@ class ExploreViewModel: ObservableObject {
                         name: route.name,
                         description: route.description,
                         distance: route.distance,
-                        duration: route.duration
+                        duration: route.duration,
+                        car: route.equipedCar
                     )
+                    
                 }
+                
                 
                 for (index, post) in posts.enumerated() {
                     self.db.fetchUsernameSync(userId: post.userid) { username in

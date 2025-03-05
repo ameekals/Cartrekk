@@ -10,6 +10,10 @@ struct PostView: View {
     @State private var showCommentsSheet = false
     @EnvironmentObject var authManager: AuthenticationManager
     
+    @ObservedObject var garageManager = GarageManager.shared
+    @ObservedObject var firestoreManager = FirestoreManager.shared
+
+    
     var post: Post
 
     init(post: Post, viewModel: ExploreViewModel) {
@@ -19,9 +23,7 @@ struct PostView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            
-           
+            VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         if let profileImage = postViewModel.profileImage {
@@ -39,16 +41,24 @@ struct PostView: View {
                         Text(post.username)
                             .font(.headline)
                             .foregroundColor(.gray)
+                        Spacer()
+                        let equippedCar = post.car
+                        if(post.car == ""){
+                            
+                        }else{
+                            Image("\(equippedCar)2d")
+                                .resizable()
+                                .frame(width: 180, height: 90)
+                                .padding(.trailing, 0)
+                        }
                         
                     }
                         
                     // Username and post name aligned to the left
-                    
                     Text(post.name)
                         .font(.title)
                         .fontWeight(.bold)
                     
-                    // Additional information in an evenly spaced row
                     HStack {
                         Text(String(format: "%.2f m", post.distance))
                         Spacer()
@@ -61,29 +71,50 @@ struct PostView: View {
                 }
                 .padding(.horizontal)
                 
-                // Swipeable image carousel
-                TabView {
-                    RoutePreviewMap(post: post)
-                        .frame(height: 250)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                    
-                    ForEach(post.photos, id: \.self) { photoUrl in
-                        AsyncImage(url: URL(string: photoUrl)) { image in
-                            image.resizable()
-                                .scaledToFit()
-                                .frame(height: 250)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
-                        } placeholder: {
-                            Color.gray.opacity(0.3)
-                                .frame(height: 250)
+                ZStack(alignment: .bottomTrailing) {
+                    TabView {
+                        RoutePreviewMap(post: post)
+                            .frame(height: 250)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                        
+                        ForEach(post.photos, id: \ .self) { photoUrl in
+                            AsyncImage(url: URL(string: photoUrl)) { image in
+                                image.resizable()
+                                    .scaledToFit()
+                                    .frame(height: 250)
+                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                            } placeholder: {
+                                Color.gray.opacity(0.3)
+                                    .frame(height: 250)
+                            }
                         }
                     }
+                    .onAppear {
+                        postViewModel.loadProfilePicture(userId: post.userid)
+                    }
+                    .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+                    .frame(height: 250)
+//                    VStack {
+//                        HStack {
+//                            Spacer() // Pushes content to the right
+//                            let equippedCar = post.car
+//                            if(post.car == ""){
+//                                Image("ef2d")
+//                                    .resizable()
+//                                    .frame(width: 200, height: 100)
+//                            }
+//                            Image("\(equippedCar)2d")
+//                                .resizable()
+//                                .frame(width: 200, height: 100)
+//                                        // Fine-tune top position
+//                            
+//                        }
+//                        Spacer() // Pushes content to the top
+//                    }
+//                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing) // Anchors to top-right
+
+                
                 }
-                .onAppear {
-                    postViewModel.loadProfilePicture(userId: post.userid)
-                }
-                .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-                .frame(height: 250)
                 
                 // Like & Comment Section
                 HStack {
@@ -146,7 +177,6 @@ struct PostView: View {
             }
             .padding(.vertical, 8)
             .onAppear {
-                // Check if user liked this post when view appears
                 viewModel.checkUserLikeStatus(
                     postId: post.id,
                     userId: authManager.userId ?? ""
@@ -315,4 +345,5 @@ class PostViewModel: ObservableObject {
     deinit {
         imageLoadTask?.cancel()
     }
+    
 }
