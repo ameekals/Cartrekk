@@ -22,6 +22,8 @@ struct GarageView: View {
                 Text("Unlock a car to view it!")
                     .font(.headline)
                     .foregroundColor(.gray)
+                    
+
             } else if let scene = scene {
                 SceneView(scene: scene, options: [.autoenablesDefaultLighting, .allowsCameraControl])
                     .frame(height: 400)
@@ -39,7 +41,6 @@ struct GarageView: View {
                     .cornerRadius(10)
                     .disabled(garageManager.usableMiles < 100)
             }
-            .padding()
 
             // Equip/Unequip Button
             if !garageManager.unlockedCars.isEmpty {
@@ -121,6 +122,11 @@ struct GarageView: View {
             let carScene = try SCNScene(url: url, options: nil)
             DispatchQueue.main.async {
                 self.scene = carScene
+                if let carNode = carScene.rootNode.childNodes.first {
+                    carNode.eulerAngles.x = (-.pi / 2) + (.pi / 8)
+                    carNode.eulerAngles.y = -(.pi / 8)
+                    carNode.position.y -= 0.7 // Move the model dow
+                }
             }
         } catch {
             print("Failed to load \(carName).ply: \(error.localizedDescription)")

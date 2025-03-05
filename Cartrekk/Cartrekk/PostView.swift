@@ -9,7 +9,10 @@ struct PostView: View {
     @State private var newComment = ""
     @State private var showCommentsSheet = false
     @EnvironmentObject var authManager: AuthenticationManager
+    
     @ObservedObject var garageManager = GarageManager.shared
+    @ObservedObject var firestoreManager = FirestoreManager.shared
+
     
     var post: Post
 
@@ -38,6 +41,17 @@ struct PostView: View {
                         Text(post.username)
                             .font(.headline)
                             .foregroundColor(.gray)
+                        Spacer()
+                        let equippedCar = post.car
+                        if(post.car == ""){
+                            
+                        }else{
+                            Image("\(equippedCar)2d")
+                                .resizable()
+                                .frame(width: 180, height: 90)
+                                .padding(.trailing, 0)
+                        }
+                        
                     }
                         
                     // Username and post name aligned to the left
@@ -80,19 +94,26 @@ struct PostView: View {
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
                     .frame(height: 250)
-                    
-                    if let equippedCar = garageManager.equippedCar, !equippedCar.isEmpty {
-                        Image("\(equippedCar)2d")
-                            .resizable()
-//                            .frame(width: 50, height: 50)
-                            .frame(width: 150, height: 100)
-//                            .clipShape(Circle())
-                            .padding(8)
-//                            .background(Color.white.opacity(0.7))
-//                            .clipShape(Circle())
-                            .padding(.trailing, 10)
-                            .padding(.bottom, 10)
-                    }
+//                    VStack {
+//                        HStack {
+//                            Spacer() // Pushes content to the right
+//                            let equippedCar = post.car
+//                            if(post.car == ""){
+//                                Image("ef2d")
+//                                    .resizable()
+//                                    .frame(width: 200, height: 100)
+//                            }
+//                            Image("\(equippedCar)2d")
+//                                .resizable()
+//                                .frame(width: 200, height: 100)
+//                                        // Fine-tune top position
+//                            
+//                        }
+//                        Spacer() // Pushes content to the top
+//                    }
+//                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing) // Anchors to top-right
+
+                
                 }
                 
                 // Like & Comment Section
@@ -324,4 +345,5 @@ class PostViewModel: ObservableObject {
     deinit {
         imageLoadTask?.cancel()
     }
+    
 }

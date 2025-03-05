@@ -135,6 +135,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
             userId: userID,
             routeName: "",
             routeDescription: ""
+            
         ) {
 
         }
