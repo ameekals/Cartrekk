@@ -210,12 +210,16 @@ class FirestoreManager: ObservableObject{
     
     func equipCar(userId: String, carName: String, completion: @escaping (Bool, String) -> Void) {
         let userRef = db.collection("users").document(userId)
-        print("equipinng car ", carName)
+        
+        let isUnequipping = carName.isEmpty
+        print(isUnequipping ? "Unequipping current car" : "Equipping car \(carName)")
+        
         userRef.updateData(["equippedCar": carName]) { error in
             if let error = error {
-                completion(false, "Error equipping car: \(error.localizedDescription)")
+                completion(false, "Error \(isUnequipping ? "unequipping" : "equipping") car: \(error.localizedDescription)")
             } else {
-                completion(true, "Successfully equipped \(carName)!")
+                let successMessage = isUnequipping ? "Successfully unequipped car!" : "Successfully equipped \(carName)!"
+                completion(true, successMessage)
             }
         }
     }
