@@ -13,6 +13,8 @@ import FirebaseFirestore
 import GoogleSignIn
 import UIKit
 import Polyline
+import SafariServices
+
 
 // MARK: - Content View
 
@@ -343,6 +345,8 @@ struct ProfileView: View {
     @State private var selectedImage: UIImage?
     @State private var isUploadingImage = false
     @State private var profileImage: UIImage?
+    @State private var showSpotifyLoginSheet = false
+    @State private var spotifyProfileImage: UIImage?
     
     
     
@@ -481,7 +485,7 @@ struct ProfileView: View {
                 VStack(spacing: 15) {
                     Text("Total Miles: \(String(format: "%.2f", garageManager.totalMiles)) mi")
                         .font(.headline)
-
+                    
                     Text("Usable Points: \(String(format: "%.2f", garageManager.usableMiles))")
                         .font(.headline)
                         .foregroundColor(garageManager.usableMiles >= 100 ? .green : .red)
@@ -494,8 +498,8 @@ struct ProfileView: View {
                     NavigationLink(destination: GarageView()) {
                         ProfileButton(title: "Garage", icon: "door.garage.closed")
                     }
-
-        
+                    
+                    
                     Button (action:{
                         tutorialManager.triggerTutorial()
                     }) {
@@ -505,23 +509,70 @@ struct ProfileView: View {
                     Button(action: logout) {
                         ProfileButton(title: "Log Out", icon: "arrow.backward", color: .red)
                     }
-                    
-                }
-                .padding(.top, 30)
-                
+                    Button(action: {
+                        showSpotifyLoginSheet = true
+                    }) {
+                        HStack {
+                            Image(systemName: viewModel.isSpotifyConnected ? "music.note" : "music.note.list")
+                                .foregroundColor(viewModel.isSpotifyConnected ? .green : .white)
+                                .imageScale(.large)
+                            
+                            if viewModel.isSpotifyConnected {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Spotify Connected")
+                                        .font(.title3)
+                                        .bold()
+                                        .foregroundColor(.green)
+                                    
+                                    if !viewModel.spotifyUsername.isEmpty {
+                                        Text(viewModel.spotifyUsername)
+                                            .font(.caption)
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                            } else {
+                                Text("Connect Spotify")
+                                    .font(.title3)
+                                    .bold()
+                                    .foregroundColor(.white)
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.green.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .padding(.horizontal)
+                    }
+                }.padding(.top, 30)
                 Spacer()
             }
             .sheet(isPresented: $showFriendsSheet) {
                FriendsView()
                    .environmentObject(authManager)
            }
+            .sheet(isPresented: $showSpotifyLoginSheet, onDismiss: {
+                // Refresh Spotify status when sheet is dismissed
+                if let userId = authManager.userId {
+                    Task {
+                        await viewModel.checkSpotifyConnectionStatus(userId: userId)
+                    }
+                }
+            }) {
+                SpotifyLoginView()
+                    .environmentObject(authManager)
+            }
            .sheet(isPresented: $showImagePicker) {
                ImagePicker(selectedImage: $selectedImage)
            }
             .sheet(isPresented: $showFriendsSheet) {
-                       FriendsView()
-                           .environmentObject(authManager)
-                   }
+               FriendsView()
+                   .environmentObject(authManager)
+           }
             .frame(maxWidth: .infinity)
             .background(Color.black.edgesIgnoringSafeArea(.all))
             .navigationBarHidden(true)
@@ -533,6 +584,8 @@ struct ProfileView: View {
                     garageManager.fetchTotalMiles(userId: userId)
                     loadProfileImage()
                     await viewModel.loadUserProfile(userId: userId)
+                    await viewModel.checkSpotifyConnectionStatus(userId: userId)
+                    // Load Spotify image if URL is available
                 }
             }
         }
@@ -562,6 +615,7 @@ struct ProfileView: View {
             }
         }.resume()
     }
+    
 }
 
 // MARK: - Profile Button Component
@@ -936,6 +990,26 @@ class ProfileViewModel: ObservableObject {
     @Published var routes: [FirestoreManager.fb_Route] = []
     @Published var profilePictureURL: String?
     private let db = FirestoreManager()
+    @Published var isSpotifyConnected: Bool = false
+    @Published var spotifyUsername: String = ""
+    
+    init() {
+        // Set up notification center observer for Spotify connection changes
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("SpotifyConnectionChanged"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            if let connected = notification.userInfo?["connected"] as? Bool, connected {
+                if let userId = Auth.auth().currentUser?.uid {
+                    Task {
+                        await self?.checkSpotifyConnectionStatus(userId: userId)
+                    }
+                }
+            }
+        }
+    }
+
     
     @MainActor
     func loadRoutes(userId: String) async {
@@ -957,6 +1031,24 @@ class ProfileViewModel: ObservableObject {
             }
         }
     }
+    
+    func checkSpotifyConnectionStatus(userId: String) async {
+        do {
+            let document = try await FirestoreManager.shared.db.collection("users").document(userId).getDocument()
+            if let data = document.data() {
+                let isConnected = data["spotifyConnected"] as? Bool ?? false
+                let username = data["spotifyUsername"] as? String ?? ""
+                
+                DispatchQueue.main.async {
+                    self.isSpotifyConnected = isConnected
+                    self.spotifyUsername = username
+                }
+            }
+        } catch {
+            print("Error checking Spotify status: \(error)")
+        }
+    }
+    
     func togglePublicStatus(routeId: String) async {
         print("Attempting to toggle in Firestore")
         let db = Firestore.firestore()
@@ -984,18 +1076,21 @@ class ProfileViewModel: ObservableObject {
     }
     
     func loadUserProfile(userId: String) async {
-            let db = Firestore.firestore()
-            do {
-                let document = try await db.collection("users").document(userId).getDocument()
-                if let data = document.data(), let profileURL = data["profilePictureURL"] as? String {
-                    DispatchQueue.main.async {
-                        self.profilePictureURL = profileURL
-                    }
+        let db = Firestore.firestore()
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            if let data = document.data(), let profileURL = data["profilePictureURL"] as? String {
+                DispatchQueue.main.async {
+                    self.profilePictureURL = profileURL
                 }
-            } catch {
-                print("Error loading user profile: (error)")
             }
+        } catch {
+            print("Error loading user profile: (error)")
         }
+    }
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 }
 
 struct ImagePicker: UIViewControllerRepresentable {
