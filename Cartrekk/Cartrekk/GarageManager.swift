@@ -30,6 +30,10 @@ class GarageManager: ObservableObject {
             print("No logged-in user. Cannot fetch total miles.")
         }
     }
+    
+    func getAllCars() -> [String] {
+        return ["redpink_truck", "yellow_car_stripe", "ef", "blue_car_hat"]
+    }
 
     func fetchTotalMiles(userId: String) {
         FirestoreManager.shared.fetchTotalDistanceForUser(userId: userId) { [weak self] totalDistance in
@@ -66,8 +70,12 @@ class GarageManager: ObservableObject {
     }
 
     func equipCar(userId: String, carName: String) {
-        guard unlockedCars.contains(carName) else { return }
-
+        // If carName is empty, it means we're unequipping
+        // If not empty, verify the car is unlocked before equipping
+        if !carName.isEmpty {
+            guard unlockedCars.contains(carName) else { return }
+        }
+        
         FirestoreManager.shared.equipCar(userId: userId, carName: carName) { [weak self] success, message in
             if success {
                 DispatchQueue.main.async {
