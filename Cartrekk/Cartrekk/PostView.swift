@@ -8,6 +8,7 @@ struct PostView: View {
     @State private var liked: Bool
     @State private var newComment = ""
     @State private var showCommentsSheet = false
+    @State private var showFullSpotifyList = false
     @EnvironmentObject var authManager: AuthenticationManager
     
     var post: Post
@@ -79,7 +80,7 @@ struct PostView: View {
                         }
                     }
                     if let spotifySongs = post.spotifyTracks, !spotifySongs.isEmpty {
-                        SpotifyTracksView(tracks: spotifySongs)
+                        SpotifyTracksPreview(tracks: spotifySongs, showFullList: $showFullSpotifyList)
                             .frame(height: 250)
                     }
                 }
@@ -156,6 +157,12 @@ struct PostView: View {
                     userId: authManager.userId ?? ""
                 ) { isLiked in
                     liked = isLiked
+                }
+            }
+            .sheet(isPresented: $showFullSpotifyList) {
+                if let spotifySongs = post.spotifyTracks, !spotifySongs.isEmpty {
+                    SpotifyTracksFullListView(tracks: spotifySongs)
+                        .preferredColorScheme(.dark)
                 }
             }
             .sheet(isPresented: $showCommentsSheet) {

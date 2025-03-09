@@ -706,6 +706,7 @@ struct RouteRow: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var isCurrentlyPublic: Bool
     @State private var showExpandedMap = false
+    @State private var showFullSpotifyList = false
     // Add a callback for deletion
     var onDelete: () -> Void
     
@@ -865,12 +866,12 @@ struct RouteRow: View {
                     }
                 }
                 if let spotifySongs = route.spotifySongs, !spotifySongs.isEmpty {
-                    SpotifyTracksView(tracks: spotifySongs)
-                        .frame(height: 250)
-                }
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-            .frame(height: 250)
+                   SpotifyTracksPreview(tracks: spotifySongs, showFullList: $showFullSpotifyList)
+                       .frame(height: 250)
+               }
+           }
+           .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+           .frame(height: 250)
 
             
             HStack(spacing: 20) {
@@ -940,7 +941,12 @@ struct RouteRow: View {
                     .padding(.vertical, 4)
             }
         }
-        
+        .sheet(isPresented: $showFullSpotifyList) {
+           if let spotifySongs = route.spotifySongs, !spotifySongs.isEmpty {
+               SpotifyTracksFullListView(tracks: spotifySongs)
+                   .preferredColorScheme(.dark)
+           }
+       }
         .sheet(isPresented: $showCommentsSheet) {
             NavigationView {
                 List {

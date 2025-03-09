@@ -337,7 +337,6 @@ class SpotifyFuncManager: ObservableObject {
     }
 }
 
-
 struct SpotifyTrackRow: View {
     let track: SpotifyTrack
     
@@ -349,12 +348,12 @@ struct SpotifyTrackRow: View {
                     image
                         .resizable()
                         .aspectRatio(contentMode: .fill)
-                        .frame(width: 50, height: 50)
+                        .frame(width: 40, height: 40)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 } placeholder: {
                     Rectangle()
                         .fill(Color.gray.opacity(0.3))
-                        .frame(width: 50, height: 50)
+                        .frame(width: 40, height: 40)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 }
             } else {
@@ -362,8 +361,8 @@ struct SpotifyTrackRow: View {
                 Image(systemName: "music.note")
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .frame(width: 30, height: 30)
-                    .padding(10)
+                    .frame(width: 25, height: 25)
+                    .padding(6)
                     .background(Color.gray.opacity(0.3))
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             }
@@ -403,43 +402,140 @@ struct SpotifyTrackRow: View {
     }
 }
 
-// Create a view that displays all Spotify tracks for a route
-struct SpotifyTracksView: View {
+struct SpotifyTracksFullListView: View {
     let tracks: [SpotifyTrack]
+    @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Image(systemName: "music.note")
-                    .foregroundColor(.green)
-                
-                Text("Songs Played During Trip")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Spacer()
-                
-                Text("\(tracks.count)")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+        NavigationView {
+            List {
+                ForEach(tracks, id: \.id) { track in
+                    SpotifyTrackRow(track: track)
+                        .listRowBackground(Color.black)
+                }
             }
-            .padding(.bottom, 4)
-            
-            Divider()
-                .background(Color.gray.opacity(0.3))
-            
-            ForEach(tracks, id: \.id) { track in
-                SpotifyTrackRow(track: track)
-                
-                if track.id != tracks.last?.id {
-                    Divider()
-                        .background(Color.gray.opacity(0.2))
+            .listStyle(PlainListStyle())
+            .background(Color.black.edgesIgnoringSafeArea(.all))
+            .navigationTitle("Songs From This Trip")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
                 }
             }
         }
-        .padding()
-        .background(Color(UIColor.systemBackground).opacity(0.05))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct SpotifyTracksPreview: View {
+    let tracks: [SpotifyTrack]
+    @Binding var showFullList: Bool
+    
+    var body: some View {
+        Button(action: {
+            showFullList = true
+        }) {
+            VStack(alignment: .leading, spacing: 7) {
+                // Header
+                HStack {
+                    Image(systemName: "music.note")
+                        .foregroundColor(.green)
+                    
+                    Text("Songs Played During Trip")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    Text("\(tracks.count)")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                    
+                    Image(systemName: "chevron.right")
+                        .foregroundColor(.gray)
+                        .font(.caption)
+                }
+                .padding(.horizontal)
+                .padding(.top)
+                
+                Divider()
+                    .background(Color.gray.opacity(0.3))
+                    .padding(.horizontal)
+                
+                // Preview of first 3 songs (or less if fewer tracks)
+                let previewCount = min(3, tracks.count)
+                ForEach(0..<previewCount, id: \.self) { index in
+                    SpotifyTrackRowPreview(track: tracks[index])
+                        .padding(.horizontal)
+                }
+                
+                if tracks.count > 3 {
+                    HStack {
+                        Text("Click anywhere to see all \(tracks.count) songs")
+                            .font(.caption)
+                            .foregroundColor(.green)
+                    }
+                    .padding(.vertical, 8)
+                }
+                
+                Spacer()
+            }
+            .contentShape(Rectangle()) // Make the entire area tappable
+            .background(Color(UIColor.systemBackground).opacity(0.05))
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(PlainButtonStyle()) // Remove button styling
+    }
+}
+
+struct SpotifyTrackRowPreview: View {
+    let track: SpotifyTrack
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            // Album artwork
+            if let albumImageUrl = track.albumImageUrl, let url = URL(string: albumImageUrl) {
+                AsyncImage(url: url) { image in
+                    image
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } placeholder: {
+                    Rectangle()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 40, height: 40)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+            } else {
+                // Fallback image if no album art is available
+                Image(systemName: "music.note")
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 25, height: 25)
+                    .padding(10)
+                    .background(Color.gray.opacity(0.3))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+            
+            // Track information - simplified for preview
+            VStack(alignment: .leading, spacing: 2) {
+                Text(track.name)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                
+                Text(track.artists)
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .lineLimit(1)
+            }
+            
+        }
+        .padding(.vertical, 3)
     }
 }
 
