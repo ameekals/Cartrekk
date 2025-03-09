@@ -67,8 +67,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                     "client_secret": clientSecret
                 ]
                 
-                print("i am here")
-                
                 let bodyString = parameters.map { "\($0.key)=\($0.value)" }.joined(separator: "&")
                 tokenRequest.httpBody = bodyString.data(using: .utf8)
                 
@@ -76,7 +74,13 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                     let (data, _) = try await URLSession.shared.data(for: tokenRequest)
                     
                     if let tokenResponse = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-                       let accessToken = tokenResponse["access_token"] as? String {
+                       let accessToken = tokenResponse["access_token"] as? String,
+                       let refreshToken = tokenResponse["refresh_token"] as? String,
+                       let expiresIn = tokenResponse["expires_in"] as? Int {
+                        
+                        // Store tokens securely - in this example we'll store in Firestore
+                        // but consider using Keychain in a production app
+                        let expirationDate = Date().addingTimeInterval(TimeInterval(expiresIn))
                         
                         // Now fetch user profile
                         var profileRequest = URLRequest(url: URL(string: "https://api.spotify.com/v1/me")!)
@@ -94,13 +98,18 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                                let imageUrl = firstImage["url"] as? String {
                                 profileImageURL = imageUrl
                             }
-                            print("display name: " + displayName)
+                            print("\ndisplay name: " + displayName)
+                            print("\naccess token" + accessToken)
+                            print("\nrefresh token" + refreshToken)
                             
                             // Update user's Spotify connection status in Firestore
                             if let userId = Auth.auth().currentUser?.uid {
                                 var userData: [String: Any] = [
                                     "spotifyConnected": true,
-                                    "spotifyUsername": displayName
+                                    "spotifyUsername": displayName,
+                                    "spotifyAccessToken": accessToken,
+                                    "spotifyRefreshToken": refreshToken,
+                                    "spotifyTokenExpiration": expirationDate
                                 ]
                                 
                                 if let imageURL = profileImageURL {
@@ -111,8 +120,8 @@ class AppDelegate: NSObject, UIApplicationDelegate {
                                     if let error = error {
                                         print("Error updating Spotify user info: \(error)")
                                     } else {
-                                        print("Successfully stored Spotify user info")
-                                        
+                                        print("Successfully stored Spotify user info and tokens")
+
                                         // Notify the UI to update
                                         NotificationCenter.default.post(
                                             name: NSNotification.Name("SpotifyConnectionChanged"),

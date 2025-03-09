@@ -31,7 +31,8 @@ class ExploreViewModel: ObservableObject {
                         name: route.name,
                         description: route.description,
                         distance: route.distance,
-                        duration: route.duration
+                        duration: route.duration,
+                        spotifyTracks: route.spotifySongs ?? []
                     )
                 }
                 

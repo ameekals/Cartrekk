@@ -864,6 +864,10 @@ struct RouteRow: View {
                         }
                     }
                 }
+                if let spotifySongs = route.spotifySongs, !spotifySongs.isEmpty {
+                    SpotifyTracksView(tracks: spotifySongs)
+                        .frame(height: 250)
+                }
             }
             .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
             .frame(height: 250)
@@ -1009,7 +1013,7 @@ class ProfileViewModel: ObservableObject {
             }
         }
     }
-
+    
     
     @MainActor
     func loadRoutes(userId: String) async {
@@ -1133,7 +1137,6 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
     }
 }
-
 
 #Preview {
     ContentView()

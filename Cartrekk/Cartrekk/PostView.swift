@@ -78,6 +78,10 @@ struct PostView: View {
                                 .frame(height: 250)
                         }
                     }
+                    if let spotifySongs = post.spotifyTracks, !spotifySongs.isEmpty {
+                        SpotifyTracksView(tracks: spotifySongs)
+                            .frame(height: 250)
+                    }
                 }
                 .onAppear {
                     postViewModel.loadProfilePicture(userId: post.userid)

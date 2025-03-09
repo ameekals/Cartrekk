@@ -10,16 +10,22 @@ import CoreLocation
 import MapKit
 import SwiftUI
 import Polyline
+import FirebaseCore
+import FirebaseAuth
 
 class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDelegate {
     static let shared = LocationTrackingService()
     @Published var locations: [CLLocation] = []
     @Published var isTracking = false
     @Published var totalDistance = 0.0
+    let spotifyManager = SpotifyFuncManager()
     
     private let locationManager: CLLocationManager
     private let distanceFilter: Double = 10
     private let timeInterval: TimeInterval = 2
+    let firestoreManager = FirestoreManager.shared
+    private var routeStartTimestamp: Int64?
+    private var trackedSongs: [SpotifyTrack] = []
     
     init(locationManager: CLLocationManager = CLLocationManager()) {
         self.locationManager = locationManager
@@ -41,20 +47,50 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
         isTracking = true
         locationManager.requestAlwaysAuthorization()
         locationManager.startUpdatingLocation()
+        
+        // Start Spotify tracking if user is connected
+        routeStartTimestamp = Int64(Date().timeIntervalSince1970 * 1000) // Milliseconds
+        trackedSongs = []
+        
+      
+        print("Current timestamp: \(Date().timeIntervalSince1970 * 1000)")
+        print("Route start timestamp: \(routeStartTimestamp)")
+        
     }
     
-    func stopTracking(userId: String) {
+    func stopTracking(userId: String, routeID: UUID) {
         isTracking = false
+          
         FirestoreManager.shared.incrementUserTotalDistance(
             userId: userId,
             additionalDistance: totalDistance * 0.000621371
         ) { error in
             if let error = error {
-                print("Failed to update total distance: (error)")
+                print("Failed to update total distance: \(error)")
             } else {
                 print("Successfully updated total distance")
             }
         }
+        
+        if let userId = Auth.auth().currentUser?.uid, let timestamp = routeStartTimestamp {
+            Task {
+                let spotifyTracks = await spotifyManager.fetchSongsFromSpotify(userId: userId, afterTimestamp: timestamp)
+                print("Fetched \(spotifyTracks.count) songs from Spotify")
+                
+                if !spotifyTracks.isEmpty {
+                    FirestoreManager.shared.saveSpotifySongsToRoute(routeID: routeID, songs: spotifyTracks) { error in
+                        if let error = error {
+                            print("Error saving Spotify songs to route: \(error)")
+                        } else {
+                            print("Successfully saved \(spotifyTracks.count) Spotify songs to route")
+                        }
+                    }
+                }
+            }
+        }else {
+            print("Cannot fetch Spotify songs: userId or timestamp is nil")
+        }
+        
         totalDistance = 0.0
         print("resetting distance")
         locationManager.stopUpdatingLocation()
