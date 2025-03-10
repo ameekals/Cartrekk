@@ -22,6 +22,7 @@ struct Post: Identifiable {
     var distance: Double
     var duration: Double
     var spotifyTracks: [SpotifyTrack]?
+    var car: String
 }
 
 struct Route: Identifiable, Codable {

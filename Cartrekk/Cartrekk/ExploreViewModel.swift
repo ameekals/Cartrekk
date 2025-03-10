@@ -33,8 +33,11 @@ class ExploreViewModel: ObservableObject {
                         distance: route.distance,
                         duration: route.duration,
                         spotifyTracks: route.spotifySongs ?? []
+                        car: route.equipedCar
                     )
+                    
                 }
+                
                 
                 for (index, post) in posts.enumerated() {
                     self.db.fetchUsernameSync(userId: post.userid) { username in
