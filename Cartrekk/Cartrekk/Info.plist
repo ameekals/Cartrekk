@@ -10,6 +10,12 @@
 				<string>com.googleusercontent.apps.1044130592051-ap2dvmsd82mc7bc8q76ls9gu18vfvaqn</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>cartrekk</string>
+			</array>
+		</dict>
 	</array>
 	<key>GIDClientID</key>
 	<string>1044130592051-ap2dvmsd82mc7bc8q76ls9gu18vfvaqn.apps.googleusercontent.com</string>
