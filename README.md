@@ -6,7 +6,8 @@
 ```
 git clone git@github.com:ameekals/Cartrekk.git
 ```
-- Then hit the run button ("Start the active scheme") to build and run the app
+- After cloning open Xcode and select "Open Exisiting Project..." and select the directory where the clone took place
+- After Cartrekk opens up on Xcode, hit the run button ("Start the active scheme") to build and run the app
 
 #### Cartrekk On Your Phone
 - You will want to first enable developer mode on your iPhone
