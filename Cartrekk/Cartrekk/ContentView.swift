@@ -648,14 +648,14 @@ struct PastRoutesView: View {
 
 // MARK: - Route Row
 struct RouteRow: View {
-    let route: FirestoreManager.fb_Route
+    let route: fb_Route
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var isCurrentlyPublic: Bool
     // Add a callback for deletion
     var onDelete: () -> Void
     
-    init(route: FirestoreManager.fb_Route, onDelete: @escaping () -> Void) {
+    init(route: fb_Route, onDelete: @escaping () -> Void) {
         self.route = route
         self.onDelete = onDelete
         _isCurrentlyPublic = State(initialValue: route.isPublic)
@@ -885,7 +885,7 @@ struct RouteRow: View {
 
 // MARK: - Profile View Model
 class ProfileViewModel: ObservableObject {
-    @Published var routes: [FirestoreManager.fb_Route] = []
+    @Published var routes: [fb_Route] = []
     @Published var profilePictureURL: String?
     private let db = FirestoreManager()
     

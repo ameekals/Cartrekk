@@ -8,8 +8,24 @@ import Firebase
 import FirebaseFirestore
 import FirebaseCore
 
+// MARK: FB Route
+struct fb_Route {
+    let docID: String
+    let createdAt: Date
+    let distance: Double
+    let duration: Double
+    let likes: Int
+    let polyline: String
+    let isPublic: Bool
+    let routeImages: [String]?
+    let userId: String
+    let description: String
+    let name: String
+    let equipedCar: String
+}
 
-class FirestoreManager: ObservableObject{
+// MARK: FireStoreManager
+class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
     static let shared = FirestoreManager()
     let db = Firestore.firestore()
     
@@ -641,21 +657,6 @@ class FirestoreManager: ObservableObject{
         }
     }
     
-    struct fb_Route {
-        let docID: String
-        let createdAt: Date
-        let distance: Double
-        let duration: Double
-        let likes: Int
-        let polyline: String
-        let isPublic: Bool
-        let routeImages: [String]?
-        let userId: String
-        let description: String
-        let name: String
-        let equipedCar: String
-    }
-    
     func searchUsers(query: String, currentUserId: String, completion: @escaping ([User]) -> Void) {
         guard !query.isEmpty else {
             completion([])
@@ -872,4 +873,15 @@ class FirestoreManager: ObservableObject{
 
 }
 
+
+// MARK: ExploreViewModel FireStore Protocol
+protocol ExploreViewModelFirestoreManaging {
+    func getFriendsPosts(userId: String, completion: @escaping ([fb_Route]?) -> Void)
+    func fetchUsernameSync(userId: String, completion: @escaping (String?) -> Void)
+    func getCommentsForRoute(routeId: String, completion: @escaping ([Comment]?) -> Void)
+    func addCommentToRoute(routeId: String, userId: String, text: String, completion: @escaping (Error?) -> Void)
+    func getLikeCount(routeId: String, completion: @escaping (Int) -> Void)
+    func handleLike(routeId: String, userId: String, completion: @escaping (Error?) -> Void)
+    func getUserLikeStatus(routeId: String, userId: String, completion: @escaping (Bool) -> Void)
+}
 

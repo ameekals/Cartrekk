@@ -3,9 +3,13 @@ import SwiftUI
 
 class ExploreViewModel: ObservableObject {
     @Published var posts: [Post] = []
-    private let db = FirestoreManager()
+    private let db: ExploreViewModelFirestoreManaging
     @Published var profileImage: UIImage?
     private var imageLoadTask: Task<Void, Never>?
+    
+    init(db: ExploreViewModelFirestoreManaging = FirestoreManager.shared) {
+        self.db = db
+    }
 
     @MainActor
     func loadFriendsPosts(userId: String) async {
