@@ -1,5 +1,7 @@
 # Cartrekk
 
+Cartrekk is a strava app for drivers. Track and log your drives whether its a commute or a scenic adventure. Add photos, names and descriptions to your route and share with friends. Share the songs you listened to along the way with Spotify connection. As you drive, you will earn points that you can use to unlock cool cars to show off on your profile. Happy driving!
+
 ### Dev Installation
 - Update Xcode to the latest version on your Mac
 - Clone repository 'https://github.com/ameekals/Cartrekk' via
