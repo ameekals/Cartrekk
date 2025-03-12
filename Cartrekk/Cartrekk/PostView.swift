@@ -8,6 +8,7 @@ struct PostView: View {
     @State private var liked: Bool
     @State private var newComment = ""
     @State private var showCommentsSheet = false
+    @State private var showFullSpotifyList = false
     @EnvironmentObject var authManager: AuthenticationManager
     
     @ObservedObject var garageManager = GarageManager.shared
@@ -88,32 +89,16 @@ struct PostView: View {
                                     .frame(height: 250)
                             }
                         }
+                        if let spotifySongs = post.spotifyTracks, !spotifySongs.isEmpty {
+                            SpotifyTracksPreview(tracks: spotifySongs, showFullList: $showFullSpotifyList)
+                                .frame(height: 250)
+                        }
                     }
                     .onAppear {
                         postViewModel.loadProfilePicture(userId: post.userid)
                     }
                     .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
                     .frame(height: 250)
-//                    VStack {
-//                        HStack {
-//                            Spacer() // Pushes content to the right
-//                            let equippedCar = post.car
-//                            if(post.car == ""){
-//                                Image("ef2d")
-//                                    .resizable()
-//                                    .frame(width: 200, height: 100)
-//                            }
-//                            Image("\(equippedCar)2d")
-//                                .resizable()
-//                                .frame(width: 200, height: 100)
-//                                        // Fine-tune top position
-//                            
-//                        }
-//                        Spacer() // Pushes content to the top
-//                    }
-//                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing) // Anchors to top-right
-
-                
                 }
                 
                 // Like & Comment Section
@@ -182,6 +167,12 @@ struct PostView: View {
                     userId: authManager.userId ?? ""
                 ) { isLiked in
                     liked = isLiked
+                }
+            }
+            .sheet(isPresented: $showFullSpotifyList) {
+                if let spotifySongs = post.spotifyTracks, !spotifySongs.isEmpty {
+                    SpotifyTracksFullListView(tracks: spotifySongs)
+                        .preferredColorScheme(.dark)
                 }
             }
             .sheet(isPresented: $showCommentsSheet) {

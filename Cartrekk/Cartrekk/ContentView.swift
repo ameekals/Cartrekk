@@ -13,6 +13,8 @@ import FirebaseFirestore
 import GoogleSignIn
 import UIKit
 import Polyline
+import SafariServices
+
 
 // MARK: - Content View
 
@@ -154,6 +156,12 @@ struct LoginView: View {
 
     var body: some View {
         VStack(spacing: 20) {
+            
+            Image("car_shrek_icon") 
+                .resizable()
+                .scaledToFit()
+                .padding(.bottom, 10)
+            
             Text("Cartrekk")
                 .font(.largeTitle)
                 .bold()
@@ -344,6 +352,9 @@ struct ProfileView: View {
     @State private var selectedImage: UIImage?
     @State private var isUploadingImage = false
     @State private var profileImage: UIImage?
+    @State private var showSpotifyLoginSheet = false
+    @State private var spotifyProfileImage: UIImage?
+    @State private var showDisconnectSpotifyAlert = false
     
     
     
@@ -352,6 +363,7 @@ struct ProfileView: View {
             VStack {
                 // Header with profile image and friends button
                 HStack {
+                    Spacer()
                     Spacer()
                     // Friends button in top right
                     Button(action: {
@@ -482,7 +494,7 @@ struct ProfileView: View {
                 VStack(spacing: 15) {
                     Text("Total Miles: \(String(format: "%.2f", garageManager.totalMiles)) mi")
                         .font(.headline)
-
+                    
                     Text("Usable Points: \(String(format: "%.2f", garageManager.usableMiles))")
                         .font(.headline)
                         .foregroundColor(garageManager.usableMiles >= 100 ? .green : .red)
@@ -495,8 +507,8 @@ struct ProfileView: View {
                     NavigationLink(destination: GarageView()) {
                         ProfileButton(title: "Garage", icon: "door.garage.closed")
                     }
-
-        
+                    
+                    
                     Button (action:{
                         tutorialManager.triggerTutorial()
                     }) {
@@ -506,23 +518,87 @@ struct ProfileView: View {
                     Button(action: logout) {
                         ProfileButton(title: "Log Out", icon: "arrow.backward", color: .red)
                     }
-                    
-                }
-                .padding(.top, 30)
-                
+                    Button(action: {
+                        if viewModel.isSpotifyConnected {
+                            // Show confirmation alert
+                            showDisconnectSpotifyAlert = true
+                        } else {
+                            showSpotifyLoginSheet = true
+                        }
+                    }) {
+                        // Keep your existing button appearance
+                        HStack {
+                            Image(systemName: viewModel.isSpotifyConnected ? "music.note" : "music.note.list")
+                                .foregroundColor(viewModel.isSpotifyConnected ? .green : .white)
+                                .imageScale(.large)
+                            
+                            if viewModel.isSpotifyConnected {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Spotify Connected")
+                                        .font(.title3)
+                                        .bold()
+                                        .foregroundColor(.green)
+                                    
+                                    if !viewModel.spotifyUsername.isEmpty {
+                                        Text(viewModel.spotifyUsername)
+                                            .font(.caption)
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                            } else {
+                                Text("Connect Spotify")
+                                    .font(.title3)
+                                    .bold()
+                                    .foregroundColor(.white)
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.green.opacity(0.2))
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .padding(.horizontal)
+                    }
+                    .confirmationDialog(
+                        "Disconnect Spotify",
+                        isPresented: $showDisconnectSpotifyAlert,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Disconnect", role: .destructive) {
+                            disconnectSpotify()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    }
+
+                }.padding(.top, 30)
                 Spacer()
             }
             .sheet(isPresented: $showFriendsSheet) {
                FriendsView()
                    .environmentObject(authManager)
            }
+            .sheet(isPresented: $showSpotifyLoginSheet, onDismiss: {
+                // Refresh Spotify status when sheet is dismissed
+                if let userId = authManager.userId {
+                    Task {
+                        await viewModel.checkSpotifyConnectionStatus(userId: userId)
+                    }
+                }
+            }) {
+                SpotifyLoginView()
+                    .environmentObject(authManager)
+            }
            .sheet(isPresented: $showImagePicker) {
                ImagePicker(selectedImage: $selectedImage)
            }
             .sheet(isPresented: $showFriendsSheet) {
-                       FriendsView()
-                           .environmentObject(authManager)
-                   }
+               FriendsView()
+                   .environmentObject(authManager)
+           }
             .frame(maxWidth: .infinity)
             .background(Color.black.edgesIgnoringSafeArea(.all))
             .navigationBarHidden(true)
@@ -534,6 +610,34 @@ struct ProfileView: View {
                     garageManager.fetchTotalMiles(userId: userId)
                     loadProfileImage()
                     await viewModel.loadUserProfile(userId: userId)
+                    await viewModel.checkSpotifyConnectionStatus(userId: userId)
+                    // Load Spotify image if URL is available
+                }
+            }
+        }
+    }
+    
+    func disconnectSpotify() {
+        if let userId = authManager.userId {
+            // Remove Spotify connection from Firestore
+            FirestoreManager.shared.db.collection("users").document(userId).updateData([
+                "spotifyConnected": false,
+                "spotifyUsername": FieldValue.delete(),
+                "spotifyAccessToken": FieldValue.delete(),
+                "spotifyRefreshToken": FieldValue.delete(),
+                "spotifyTokenExpiration": FieldValue.delete(),
+                "spotifyProfileImageURL": FieldValue.delete()
+            ]) { error in
+                if let error = error {
+                    print("Error disconnecting Spotify: \(error)")
+                } else {
+                    print("Successfully disconnected Spotify")
+                    
+                    // Update the view model
+                    DispatchQueue.main.async {
+                        self.viewModel.isSpotifyConnected = false
+                        self.viewModel.spotifyUsername = ""
+                    }
                 }
             }
         }
@@ -563,6 +667,7 @@ struct ProfileView: View {
             }
         }.resume()
     }
+    
 }
 
 // MARK: - Profile Button Component
@@ -652,6 +757,8 @@ struct RouteRow: View {
     @StateObject private var viewModel = ProfileViewModel()
     @EnvironmentObject var authManager: AuthenticationManager
     @State private var isCurrentlyPublic: Bool
+    @State private var showExpandedMap = false
+    @State private var showFullSpotifyList = false
     // Add a callback for deletion
     var onDelete: () -> Void
     
@@ -725,30 +832,78 @@ struct RouteRow: View {
                 let polyline = Polyline(encodedPolyline: route.polyline)
                 
                 if let locations = polyline.locations, !locations.isEmpty {
-                    Map {
-                        Marker("Start",
-                               coordinate: locations.first!.coordinate)
-                        .tint(.green)
-                        
-                        Marker("End",
-                               coordinate: locations.last!.coordinate)
-                        .tint(.red)
-                        
-                        MapPolyline(coordinates: locations.map { $0.coordinate })
-                            .stroke(
-                                Color.blue.opacity(0.8),
-                                style: StrokeStyle(
-                                    lineWidth: 4,
-                                    lineCap: .butt,
-                                    lineJoin: .round,
-                                    miterLimit: 10
+                    ZStack {
+                        Map {
+                            Marker("Start",
+                                   coordinate: locations.first!.coordinate)
+                            .tint(.green)
+                            
+                            Marker("End",
+                                   coordinate: locations.last!.coordinate)
+                            .tint(.red)
+                            
+                            MapPolyline(coordinates: locations.map { $0.coordinate })
+                                .stroke(
+                                    Color.blue.opacity(0.8),
+                                    style: StrokeStyle(
+                                        lineWidth: 4,
+                                        lineCap: .butt,
+                                        lineJoin: .round,
+                                        miterLimit: 10
+                                    )
                                 )
-                            )
+                        }
+                        .frame(height: 250)
+                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                        .allowsHitTesting(false) // Disable direct map interaction in carousel
+                        
+                        // Add a transparent overlay button that fills the entire map area
+                        Button(action: {
+                            showExpandedMap = true
+                        }) {
+                            Rectangle()
+                                .fill(Color.clear)
+                                .contentShape(Rectangle()) // Important for hit testing
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                     .frame(height: 250)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                    .disabled(true)
-                    .allowsHitTesting(false)
+                    // Present a full-screen map when tapped
+                    .fullScreenCover(isPresented: $showExpandedMap) {
+                        NavigationView {
+                            Map {
+                                Marker("Start",
+                                       coordinate: locations.first!.coordinate)
+                                .tint(.green)
+                                
+                                Marker("End",
+                                       coordinate: locations.last!.coordinate)
+                                .tint(.red)
+                                
+                                MapPolyline(coordinates: locations.map { $0.coordinate })
+                                    .stroke(
+                                        Color.blue.opacity(0.8),
+                                        style: StrokeStyle(
+                                            lineWidth: 4,
+                                            lineCap: .butt,
+                                            lineJoin: .round,
+                                            miterLimit: 10
+                                        )
+                                    )
+                            }
+                            .navigationTitle("Route Map")
+                            .navigationBarTitleDisplayMode(.inline)
+                            .toolbar {
+                                ToolbarItem(placement: .navigationBarTrailing) {
+                                    Button("Close") {
+                                        showExpandedMap = false
+                                    }
+                                }
+                            }
+                            .ignoresSafeArea(.all, edges: .bottom)
+                        }
+                    }
                 }
 
                 if let routeImages = route.routeImages, !routeImages.isEmpty {
@@ -762,9 +917,13 @@ struct RouteRow: View {
                         }
                     }
                 }
-            }
-            .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
-            .frame(height: 250)
+                if let spotifySongs = route.spotifySongs, !spotifySongs.isEmpty {
+                   SpotifyTracksPreview(tracks: spotifySongs, showFullList: $showFullSpotifyList)
+                       .frame(height: 250)
+               }
+           }
+           .tabViewStyle(PageTabViewStyle(indexDisplayMode: .automatic))
+           .frame(height: 250)
 
             
             HStack(spacing: 20) {
@@ -834,7 +993,12 @@ struct RouteRow: View {
                     .padding(.vertical, 4)
             }
         }
-        
+        .sheet(isPresented: $showFullSpotifyList) {
+           if let spotifySongs = route.spotifySongs, !spotifySongs.isEmpty {
+               SpotifyTracksFullListView(tracks: spotifySongs)
+                   .preferredColorScheme(.dark)
+           }
+       }
         .sheet(isPresented: $showCommentsSheet) {
             NavigationView {
                 List {
@@ -888,6 +1052,26 @@ class ProfileViewModel: ObservableObject {
     @Published var routes: [fb_Route] = []
     @Published var profilePictureURL: String?
     private let db = FirestoreManager()
+    @Published var isSpotifyConnected: Bool = false
+    @Published var spotifyUsername: String = ""
+    
+    init() {
+        // Set up notification center observer for Spotify connection changes
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("SpotifyConnectionChanged"),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            if let connected = notification.userInfo?["connected"] as? Bool, connected {
+                if let userId = Auth.auth().currentUser?.uid {
+                    Task {
+                        await self?.checkSpotifyConnectionStatus(userId: userId)
+                    }
+                }
+            }
+        }
+    }
+    
     
     @MainActor
     func loadRoutes(userId: String) async {
@@ -909,6 +1093,24 @@ class ProfileViewModel: ObservableObject {
             }
         }
     }
+    
+    func checkSpotifyConnectionStatus(userId: String) async {
+        do {
+            let document = try await FirestoreManager.shared.db.collection("users").document(userId).getDocument()
+            if let data = document.data() {
+                let isConnected = data["spotifyConnected"] as? Bool ?? false
+                let username = data["spotifyUsername"] as? String ?? ""
+                
+                DispatchQueue.main.async {
+                    self.isSpotifyConnected = isConnected
+                    self.spotifyUsername = username
+                }
+            }
+        } catch {
+            print("Error checking Spotify status: \(error)")
+        }
+    }
+    
     func togglePublicStatus(routeId: String) async {
         print("Attempting to toggle in Firestore")
         let db = Firestore.firestore()
@@ -936,18 +1138,21 @@ class ProfileViewModel: ObservableObject {
     }
     
     func loadUserProfile(userId: String) async {
-            let db = Firestore.firestore()
-            do {
-                let document = try await db.collection("users").document(userId).getDocument()
-                if let data = document.data(), let profileURL = data["profilePictureURL"] as? String {
-                    DispatchQueue.main.async {
-                        self.profilePictureURL = profileURL
-                    }
+        let db = Firestore.firestore()
+        do {
+            let document = try await db.collection("users").document(userId).getDocument()
+            if let data = document.data(), let profileURL = data["profilePictureURL"] as? String {
+                DispatchQueue.main.async {
+                    self.profilePictureURL = profileURL
                 }
-            } catch {
-                print("Error loading user profile: (error)")
             }
+        } catch {
+            print("Error loading user profile: (error)")
         }
+    }
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
 }
 
 struct ImagePicker: UIViewControllerRepresentable {
@@ -990,7 +1195,6 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
     }
 }
-
 
 #Preview {
     ContentView()

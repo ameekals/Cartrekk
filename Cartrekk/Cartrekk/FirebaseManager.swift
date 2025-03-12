@@ -49,6 +49,40 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
             // Parse documents into Route models
             let routes: [fb_Route] = documents.compactMap { document in
                 let data = document.data()
+                
+                // First, modify your fb_Route struct to include a new initializer that accepts all these parameters
+                // along with the spotifySongs parameter, and update all calling code to use that
+                
+                // Parse Spotify songs
+                var spotifySongs: [SpotifyTrack]? = nil
+                if let spotifySongsData = data["spotifySongs"] as? [[String: Any]] {
+                    var songs: [SpotifyTrack] = []
+                    for songData in spotifySongsData {
+                        if let id = songData["id"] as? String,
+                           let name = songData["name"] as? String,
+                           let artists = songData["artists"] as? String,
+                           let albumName = songData["albumName"] as? String,
+                           let playedAt = songData["playedAt"] as? String {
+                            
+                            let albumImageUrl = songData["albumImageUrl"] as? String
+                            
+                            let track = SpotifyTrack(
+                                id: id,
+                                name: name,
+                                artists: artists,
+                                albumName: albumName,
+                                albumImageUrl: albumImageUrl,
+                                playedAt: playedAt
+                            )
+                            songs.append(track)
+                        }
+                    }
+                    if !songs.isEmpty {
+                        spotifySongs = songs
+                    }
+                }
+                
+                // Use your current fb_Route initializer pattern but with the new spotifySongs parameter
                 return fb_Route(
                     docID: document.documentID,
                     createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
@@ -61,13 +95,15 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
                     userId: data["userid"] as? String ?? "",
                     description: data["description"] as? String ?? "",
                     name: data["name"] as? String ?? "",
-                    equipedCar: data[""] as? String ?? "ef"
+                    spotifySongs: spotifySongs,  // Add the new parameter here
+                    equipedCar: data[""] as? String ?? ""
                 )
             }
             
             completion(routes)
         }
     }
+  
     func incrementUserTotalDistance(userId: String, additionalDistance: Double, completion: @escaping (Error?) -> Void) {
         let userRef = db.collection("users").document(userId)
         
@@ -274,7 +310,7 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
                 "userid": userId,
                 "name": routeName,
                 "description": routeDescription,
-                "equippedCar": equippedCar ?? "ef"
+                "equippedCar": equippedCar ?? ""
                 // Now the data is available here
             ]
 
@@ -365,8 +401,8 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
         
         routesRef
             .whereField("public", isEqualTo: true)
-            .order(by: "createdAt", descending: true)  // Get newest first
-            .limit(to: 15)  // Only get 15 documents
+            .order(by: "createdAt", descending: true)
+            .limit(to: 15)
             .getDocuments(source: .default) { (snapshot, error) in
             if let error = error {
                 print("Error fetching public routes: \(error)")
@@ -379,29 +415,15 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
                 completion(nil)
                 return
             }
-            
-            // Parse documents into Route models
+                                             
             let routes: [fb_Route] = documents.compactMap { document in
-                let data = document.data()
-                return fb_Route(
-                    docID: document.documentID,
-                    createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
-                    distance: data["distance"] as? Double ?? 0.0,
-                    duration: data["duration"] as? Double ?? 0.0,
-                    likes: data["likes"] as? Int ?? 0,
-                    polyline: data["polyline"] as? String ?? "",
-                    isPublic: data["public"] as? Bool ?? false,
-                    routeImages: data["routeImages"] as? [String] ?? [],
-                    userId: data["userid"] as? String ?? "",
-                    description: data["description"] as? String ?? "",
-                    name: data["name"] as? String ?? "",
-                    equipedCar: data["equipedCar"] as? String ?? ""
-                    
-                )
-            }
+                    // Create fb_Route using your existing initializer
+                 return fb_Route(id: document.documentID, data: document.data())
+             }
+
+             completion(routes)
             
-            completion(routes)
-        }
+            }
     }
     
     func getFriendsPosts(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
@@ -450,6 +472,36 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
                     let routes: [fb_Route] = documents.compactMap { document in
                         // Same parsing logic as in getPublicRoutes
                         let data = document.data()
+                        
+                        // Parse Spotify songs data
+                        var spotifySongs: [SpotifyTrack]? = nil
+                        if let spotifySongsData = data["spotifySongs"] as? [[String: Any]] {
+                            var songs: [SpotifyTrack] = []
+                            for songData in spotifySongsData {
+                                if let id = songData["id"] as? String,
+                                   let name = songData["name"] as? String,
+                                   let artists = songData["artists"] as? String,
+                                   let albumName = songData["albumName"] as? String,
+                                   let playedAt = songData["playedAt"] as? String {
+                                    
+                                    let albumImageUrl = songData["albumImageUrl"] as? String
+                                    
+                                    let track = SpotifyTrack(
+                                        id: id,
+                                        name: name,
+                                        artists: artists,
+                                        albumName: albumName,
+                                        albumImageUrl: albumImageUrl,
+                                        playedAt: playedAt
+                                    )
+                                    songs.append(track)
+                                }
+                            }
+                            if !songs.isEmpty {
+                                spotifySongs = songs
+                            }
+                        }
+                        
                         return fb_Route(
                             docID: document.documentID,
                             createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
@@ -462,7 +514,7 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
                             userId: data["userid"] as? String ?? "",
                             description: data["description"] as? String ?? "",
                             name: data["name"] as? String ?? "",
-                            //check thisw
+                            spotifySongs: spotifySongs,  // Add the new parameter
                             equipedCar: data["equippedCar"] as? String ?? ""
                         )
                     }
@@ -471,7 +523,6 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
                 }
         }
     }
-    
     func getCommentsForRoute(routeId: String, completion: @escaping ([Comment]?) -> Void) {
         let commentsRef = db.collection("routes").document(routeId).collection("comments")
         
@@ -657,6 +708,7 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
         }
     }
     
+
     func searchUsers(query: String, currentUserId: String, completion: @escaping ([User]) -> Void) {
         guard !query.isEmpty else {
             completion([])
@@ -816,7 +868,8 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
                 }
             }
             
-            dispatchGroup.notify(queue: .main) {
+            dispatchGroup.notify(queue: .
+                            ) {
                 completion(friends)
             }
         }
@@ -866,6 +919,112 @@ class FirestoreManager: ObservableObject, ExploreViewModelFirestoreManaging{
             
             dispatchGroup.notify(queue: .main) {
                 completion(requests)
+            }
+        }
+    }
+    
+    func saveSpotifySongsToRoute(routeID: UUID, songs: [SpotifyTrack], completion: @escaping (Error?) -> Void) {
+        // Convert tracked songs to dictionary format for Firestore
+        let routeID = routeID.uuidString
+        let songsData = songs.map { song -> [String: Any] in
+            var songDict: [String: Any] = [
+                "id": song.id,
+                "name": song.name,
+                "artists": song.artists,
+                "albumName": song.albumName,
+                "playedAt": song.playedAt
+            ]
+            
+            if let albumImageUrl = song.albumImageUrl {
+                songDict["albumImageUrl"] = albumImageUrl
+            }
+            
+            return songDict
+        }
+        
+        // Update the route document with the songs
+        db.collection("routes").document(routeID).updateData([
+            "spotifySongs": songsData
+        ]) { error in
+            completion(error)
+        }
+    }
+    
+    struct fb_Route {
+        let docID: String
+        let createdAt: Date
+        let distance: Double
+        let duration: Double
+        let likes: Int
+        let polyline: String
+        let isPublic: Bool
+        let routeImages: [String]?
+        let userId: String
+        let description: String
+        let name: String
+        var spotifySongs: [SpotifyTrack]?
+        let equipedCar: String
+        
+        init(docID: String, createdAt: Date, distance: Double, duration: Double,
+             likes: Int, polyline: String, isPublic: Bool, routeImages: [String],
+             userId: String, description: String, name: String,
+             spotifySongs: [SpotifyTrack]? = nil, equipedCar: String) {  // Default to nil for backward compatibility
+            
+            self.docID = docID
+            self.createdAt = createdAt
+            self.distance = distance
+            self.duration = duration
+            self.likes = likes
+            self.polyline = polyline
+            self.isPublic = isPublic
+            self.routeImages = routeImages
+            self.userId = userId
+            self.description = description
+            self.name = name
+            self.spotifySongs = spotifySongs
+            self.equipedCar = equipedCar
+        }
+    
+        init(id: String, data: [String: Any]) {
+            self.docID = id
+            self.userId = data["userId"] as? String ?? ""
+            self.createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
+            self.distance = data["distance"] as? Double ?? 0.0
+            self.duration = data["duration"] as? Double ?? 0.0
+            self.polyline = data["polyline"] as? String ?? ""
+            self.isPublic = data["isPublic"] as? Bool ?? false
+            self.name = data["name"] as? String ?? ""
+            self.description = data["description"] as? String ?? ""
+            self.likes = data["likes"] as? Int ?? 0
+            self.routeImages = data["routeImages"] as? [String]
+            self.equipedCar = data["equipedCar"] as? String ?? ""
+            
+            // Add the Spotify songs parsing code here:
+            if let spotifySongsData = data["spotifySongs"] as? [[String: Any]] {
+                var songs: [SpotifyTrack] = []
+                for songData in spotifySongsData {
+                    if let id = songData["id"] as? String,
+                       let name = songData["name"] as? String,
+                       let artists = songData["artists"] as? String,
+                       let albumName = songData["albumName"] as? String,
+                       let playedAt = songData["playedAt"] as? String {
+                        
+                        let albumImageUrl = songData["albumImageUrl"] as? String
+                        
+                        let track = SpotifyTrack(
+                            id: id,
+                            name: name,
+                            artists: artists,
+                            albumName: albumName,
+                            albumImageUrl: albumImageUrl,
+                            playedAt: playedAt
+                        )
+                        songs.append(track)
+                    }
+                }
+                self.spotifySongs = songs
+            } else {
+                self.spotifySongs = nil
             }
         }
     }

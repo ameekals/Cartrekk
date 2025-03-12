@@ -46,7 +46,7 @@ class TrackingStateManager: ObservableObject {
 
             guard let self = self else { return }
             self.elapsedTime = 0.0
-            self.locationService.stopTracking(userId: userId)
+            self.locationService.stopTracking(userId: userId, routeID: currentRouteId!)
             self.currentRouteId = nil
         }
     }
