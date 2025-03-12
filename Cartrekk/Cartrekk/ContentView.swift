@@ -363,6 +363,7 @@ struct ProfileView: View {
                 // Header with profile image and friends button
                 HStack {
                     Spacer()
+                    Spacer()
                     // Friends button in top right
                     Button(action: {
                         print("Friends button tapped")
@@ -555,6 +556,9 @@ struct ProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .padding(.horizontal)
                     }
+                    
+                    
+                    Spacer()
                 }.padding(.top, 30)
                 Spacer()
             }

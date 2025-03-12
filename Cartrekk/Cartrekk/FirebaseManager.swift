@@ -80,7 +80,7 @@ class FirestoreManager: ObservableObject{
                     description: data["description"] as? String ?? "",
                     name: data["name"] as? String ?? "",
                     spotifySongs: spotifySongs,  // Add the new parameter here
-                    equipedCar: data[""] as? String ?? "ef"
+                    equipedCar: data[""] as? String ?? ""
                 )
             }
             
@@ -294,7 +294,7 @@ class FirestoreManager: ObservableObject{
                 "userid": userId,
                 "name": routeName,
                 "description": routeDescription,
-                "equippedCar": equippedCar ?? "ef"
+                "equippedCar": equippedCar ?? ""
                 // Now the data is available here
             ]
 

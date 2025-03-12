@@ -49,7 +49,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             Task {
                 // This is a simplified version - in a real app, you'd want to store these tokens securely
                 let clientId = "fa7a4a634c29432cb81412d1157e6d19"
-                let clientSecret = "Spotify Secret Whoopsies" // Replace with your actual client secret
+                let clientSecret = "427745ea445b48a8b9588b92c7a18900" // Replace with your actual client secret
                 let redirectUri = "cartrekk://spotify-callback"
                 
                 // Exchange code for token
