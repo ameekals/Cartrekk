@@ -258,11 +258,25 @@ class SpotifyFuncManager: ObservableObject {
             if let httpResponse = response as? HTTPURLResponse {
                 print("API Response Code: \(httpResponse.statusCode)")
                 if httpResponse.statusCode != 200 {
+                    print("Error status code: \(httpResponse.statusCode)")
+                    print("Raw response data: \(String(data: responseData, encoding: .utf8) ?? "Unable to decode response")")
+                    
+                    // Then try to parse as JSON if possible
+                    if let errorJson = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any] {
+                        print("Error response: \(errorJson)")
+                    }
+                }
+                if httpResponse.statusCode != 200 {
                     if let errorJson = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any] {
                         print("Error response: \(errorJson)")
                     }
                 }
             }
+            
+            print("Access token exists: \(accessToken != "")")
+            print("First/last 4 chars of token: \(accessToken.prefix(4))...\(accessToken.suffix(4))")
+            print("Token expiration: \(tokenExpiration.dateValue())")
+            print("Refresh token exists: \(refreshToken != "")")
             
             
             
