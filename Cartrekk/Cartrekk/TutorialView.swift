@@ -44,7 +44,7 @@ struct TutorialView: View {
         ),
         TutorialPage(
             title: "Open Lootboxes and Earn Rewards",
-            description: "Use the miles you've driven to open lootboxes and earn rewards!",
+            description: "Use the miles you've driven to open lootboxes and earn rewards! Each mile opens 1 box",
             imageName: "gift.fill"
         )
     ]
