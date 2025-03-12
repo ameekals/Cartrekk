@@ -516,7 +516,7 @@ struct ProfileView: View {
                     }
                     
                     Button(action: logout) {
-                        ProfileButton(title: "Log Out", icon: "arrow.backward", color: .red)
+                        ProfileButton(title: "Log Out", icon: "figure.run", color: .red)
                     }
                     Button(action: {
                         if viewModel.isSpotifyConnected {
