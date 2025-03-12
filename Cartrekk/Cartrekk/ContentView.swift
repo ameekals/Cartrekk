@@ -354,6 +354,7 @@ struct ProfileView: View {
     @State private var profileImage: UIImage?
     @State private var showSpotifyLoginSheet = false
     @State private var spotifyProfileImage: UIImage?
+    @State private var showDisconnectSpotifyAlert = false
     
     
     
@@ -518,8 +519,14 @@ struct ProfileView: View {
                         ProfileButton(title: "Log Out", icon: "arrow.backward", color: .red)
                     }
                     Button(action: {
-                        showSpotifyLoginSheet = true
+                        if viewModel.isSpotifyConnected {
+                            // Show confirmation alert
+                            showDisconnectSpotifyAlert = true
+                        } else {
+                            showSpotifyLoginSheet = true
+                        }
                     }) {
+                        // Keep your existing button appearance
                         HStack {
                             Image(systemName: viewModel.isSpotifyConnected ? "music.note" : "music.note.list")
                                 .foregroundColor(viewModel.isSpotifyConnected ? .green : .white)
@@ -556,9 +563,17 @@ struct ProfileView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 10))
                         .padding(.horizontal)
                     }
-                    
-                    
-                    Spacer()
+                    .confirmationDialog(
+                        "Disconnect Spotify",
+                        isPresented: $showDisconnectSpotifyAlert,
+                        titleVisibility: .visible
+                    ) {
+                        Button("Disconnect", role: .destructive) {
+                            disconnectSpotify()
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    }
+
                 }.padding(.top, 30)
                 Spacer()
             }
@@ -597,6 +612,32 @@ struct ProfileView: View {
                     await viewModel.loadUserProfile(userId: userId)
                     await viewModel.checkSpotifyConnectionStatus(userId: userId)
                     // Load Spotify image if URL is available
+                }
+            }
+        }
+    }
+    
+    func disconnectSpotify() {
+        if let userId = authManager.userId {
+            // Remove Spotify connection from Firestore
+            FirestoreManager.shared.db.collection("users").document(userId).updateData([
+                "spotifyConnected": false,
+                "spotifyUsername": FieldValue.delete(),
+                "spotifyAccessToken": FieldValue.delete(),
+                "spotifyRefreshToken": FieldValue.delete(),
+                "spotifyTokenExpiration": FieldValue.delete(),
+                "spotifyProfileImageURL": FieldValue.delete()
+            ]) { error in
+                if let error = error {
+                    print("Error disconnecting Spotify: \(error)")
+                } else {
+                    print("Successfully disconnected Spotify")
+                    
+                    // Update the view model
+                    DispatchQueue.main.async {
+                        self.viewModel.isSpotifyConnected = false
+                        self.viewModel.spotifyUsername = ""
+                    }
                 }
             }
         }
