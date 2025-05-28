@@ -152,7 +152,8 @@ struct RouteDetailsOverlay: View {
     }
 }
 
-// MARK: - Map View
+//MARK: MapView
+
 struct MapView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var locationService = LocationTrackingService.shared
@@ -161,6 +162,11 @@ struct MapView: View {
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
     @State private var showRouteDetailsOverlay = false
+    
+    // Stop detection state
+    @State private var isVehicleStopped = false
+    @State private var stopDetectionTimer: Timer?
+    @State private var lastKnownSpeed: CLLocationSpeed = 0
     
     var body: some View {
         // Use optional binding instead of force-unwrapping (!)
@@ -204,6 +210,16 @@ struct MapView: View {
                         Text(String(format: "%.2f mi", locationService.totalDistance * 0.00062137))
                             .font(.headline)
                             .foregroundColor(.gray)
+                        
+                        // Debug info for stop detection (remove in production)
+                        if trackingManager.isTracking {
+                            Text("Speed: \(String(format: "%.1f", lastKnownSpeed * 2.237)) mph")
+                                .font(.caption)
+                                .foregroundColor(.yellow)
+                            Text(isVehicleStopped ? "STOPPED" : "MOVING")
+                                .font(.caption)
+                                .foregroundColor(isVehicleStopped ? .green : .red)
+                        }
                     }
                     .padding()
                     .background(Color.black.opacity(0.6))
@@ -220,6 +236,7 @@ struct MapView: View {
                                 CLLocationManager().requestAlwaysAuthorization()
                                 let newRouteId = UUID()
                                 trackingManager.startTracking(routeId: newRouteId, userID: userId)
+                                startStopDetection()
                             }
                         }) {
                             Image(systemName: "car.fill")
@@ -235,17 +252,19 @@ struct MapView: View {
                         Spacer()
 
                         if trackingManager.isTracking {
-                           Button(action: {
-                               showCamera = true
-                           }) {
-                               Image(systemName: "camera.circle.fill")
-                                   .resizable()
-                                   .frame(width: 50, height: 50)
-                                   .foregroundColor(.white)
-                                   .background(Color.blue.opacity(0.9))
-                                   .clipShape(Circle())
-                                   .shadow(radius: 5)
-                           }
+                            Button(action: {
+                                showCamera = true
+                            }) {
+                                Image(systemName: "camera.circle.fill")
+                                    .resizable()
+                                    .frame(width: 50, height: 50)
+                                    .foregroundColor(.white)
+                                    .background(isVehicleStopped ? Color.green.opacity(0.9) : Color.gray.opacity(0.5))
+                                    .clipShape(Circle())
+                                    .shadow(radius: 5)
+                            }
+                            .disabled(!isVehicleStopped) // Only allow camera when stopped
+                            .opacity(isVehicleStopped ? 1.0 : 0.6)
                            
                            Spacer()
                        }
@@ -268,6 +287,7 @@ struct MapView: View {
                             routeName: name,
                             routeDescription: description
                         )
+                        stopStopDetection()
                     }
                     .zIndex(100)
                 }
@@ -277,10 +297,62 @@ struct MapView: View {
                 CLLocationManager().requestWhenInUseAuthorization()
                 CLLocationManager().requestAlwaysAuthorization()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .locationUpdated)) { _ in
+                updateStopDetection()
+            }
             .sheet(isPresented: $showCamera, onDismiss: handleCameraDismiss) {
                 CameraView(image: $capturedImage)
             }
         )
+    }
+    
+    // MARK: - Stop Detection Methods
+    
+    private func startStopDetection() {
+        isVehicleStopped = false
+        stopDetectionTimer?.invalidate()
+        
+        // Check every 2 seconds
+        stopDetectionTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
+            updateStopDetection()
+        }
+    }
+    
+    private func stopStopDetection() {
+        stopDetectionTimer?.invalidate()
+        stopDetectionTimer = nil
+        isVehicleStopped = false
+    }
+    
+    private func updateStopDetection() {
+        guard trackingManager.isTracking,
+              let lastLocation = locationService.locations.last else {
+            return
+        }
+        
+        // Get speed from location (in m/s)
+        lastKnownSpeed = lastLocation.speed
+        
+        // Consider stopped if speed is less than 1.34 m/s (3 mph) and GPS accuracy is reasonable
+        let speedThreshold: CLLocationSpeed = 1.34 // 3 mph in m/s
+        let isCurrentlySlow = lastKnownSpeed < speedThreshold && lastLocation.horizontalAccuracy < 20
+        
+        // Simple state management - you might want to add time-based logic here later
+        if isCurrentlySlow && !isVehicleStopped {
+            // Just became slow/stopped
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8.0) {
+                // Double-check we're still slow after 8 seconds
+                if let currentLocation = locationService.locations.last,
+                   currentLocation.speed < speedThreshold {
+                    isVehicleStopped = true
+                    print("Vehicle detected as stopped")
+                }
+            }
+        } else if !isCurrentlySlow && isVehicleStopped {
+            // Started moving again
+            isVehicleStopped = false
+            print("Vehicle detected as moving")
+        }
     }
     
     private func handleCameraDismiss() {
@@ -307,6 +379,11 @@ struct MapView: View {
         let seconds = Int(interval) % 60
         return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
     }
+}
+
+// MARK: - Notification Extension
+extension Notification.Name {
+    static let locationUpdated = Notification.Name("locationUpdated")
 }
 
 // MARK: - Camera View

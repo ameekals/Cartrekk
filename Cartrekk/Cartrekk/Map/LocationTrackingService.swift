@@ -21,7 +21,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     let spotifyManager = SpotifyFuncManager()
     
     private let locationManager: CLLocationManager
-    private let distanceFilter: Double = 10
+    //private let distanceFilter: Double = 10
     private let timeInterval: TimeInterval = 2
     let firestoreManager = FirestoreManager.shared
     private var routeStartTimestamp: Int64?
@@ -36,7 +36,7 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
     private func setupLocationManager() {
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = distanceFilter
+        //locationManager.distanceFilter = distanceFilter
         
         locationManager.allowsBackgroundLocationUpdates = true // Requires background capability
         //locationManager.pausesLocationUpdatesAutomatically = false
@@ -106,13 +106,15 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
             if timeSinceLastUpdate >= timeInterval {
                 let distance = location.distance(from: lastLocation) // Returns distance in meters
                 totalDistance += distance // Add to total distance
-                print(totalDistance)
+                //print(totalDistance)
                 locations.append(location)
             }
         } else {
             // First location
             locations.append(location)
         }
+        
+        NotificationCenter.default.post(name: .locationUpdated, object: nil)
     }
     
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
