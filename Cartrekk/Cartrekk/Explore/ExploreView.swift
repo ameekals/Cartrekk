@@ -40,7 +40,7 @@ struct ExploreView: View {
                     }
                 }
             }
-            .navigationBarTitle("Friend Activity")
+            .navigationBarTitle("Friends")
             .task {
                 if let userId = authManager.userId {
                     await viewModel.loadFriendsPosts(userId: userId)

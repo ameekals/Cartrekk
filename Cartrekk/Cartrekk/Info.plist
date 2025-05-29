@@ -21,6 +21,10 @@
 	<string>1044130592051-ap2dvmsd82mc7bc8q76ls9gu18vfvaqn.apps.googleusercontent.com</string>
 	<key>MKDirectionsApplicationSupportedModes</key>
 	<array/>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>needs access to save route photos to your camera roll.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Gotta save the photos to photos</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>

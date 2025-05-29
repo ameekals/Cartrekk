@@ -351,70 +351,70 @@ class SpotifyFuncManager: ObservableObject {
     }
 }
 
-struct SpotifyTrackRow: View {
-    let track: SpotifyTrack
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            // Album artwork
-            if let albumImageUrl = track.albumImageUrl, let url = URL(string: albumImageUrl) {
-                AsyncImage(url: url) { image in
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 40, height: 40)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                } placeholder: {
-                    Rectangle()
-                        .fill(Color.gray.opacity(0.3))
-                        .frame(width: 40, height: 40)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-            } else {
-                // Fallback image if no album art is available
-                Image(systemName: "music.note")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(width: 25, height: 25)
-                    .padding(6)
-                    .background(Color.gray.opacity(0.3))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-            
-            // Track information
-            VStack(alignment: .leading, spacing: 4) {
-                Text(track.name)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .lineLimit(1)
-                
-                HStack {
-                    Text(track.artists)
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .lineLimit(1)
-                    
-                    Spacer()
-                    
-                    // Format and display played time
-                    if let playedDate = formatPlayedAt(track.playedAt) {
-                        Text(playedDate, style: .time)
-                            .font(.caption2)
-                            .foregroundColor(.gray)
-                    }
-                }
-            }
-        }
-        .padding(.vertical, 4)
-    }
-    
-    // Helper function to parse Spotify's ISO 8601 date format
-    private func formatPlayedAt(_ dateString: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: dateString)
-    }
-}
+//struct SpotifyTrackRow: View {
+//    let track: SpotifyTrack
+//    
+//    var body: some View {
+//        HStack(spacing: 12) {
+//            // Album artwork
+//            if let albumImageUrl = track.albumImageUrl, let url = URL(string: albumImageUrl) {
+//                AsyncImage(url: url) { image in
+//                    image
+//                        .resizable()
+//                        .aspectRatio(contentMode: .fill)
+//                        .frame(width: 40, height: 40)
+//                        .clipShape(RoundedRectangle(cornerRadius: 6))
+//                } placeholder: {
+//                    Rectangle()
+//                        .fill(Color.gray.opacity(0.3))
+//                        .frame(width: 40, height: 40)
+//                        .clipShape(RoundedRectangle(cornerRadius: 6))
+//                }
+//            } else {
+//                // Fallback image if no album art is available
+//                Image(systemName: "music.note")
+//                    .resizable()
+//                    .aspectRatio(contentMode: .fit)
+//                    .frame(width: 25, height: 25)
+//                    .padding(6)
+//                    .background(Color.gray.opacity(0.3))
+//                    .clipShape(RoundedRectangle(cornerRadius: 6))
+//            }
+//            
+//            // Track information
+//            VStack(alignment: .leading, spacing: 4) {
+//                Text(track.name)
+//                    .font(.subheadline)
+//                    .fontWeight(.medium)
+//                    .lineLimit(1)
+//                
+//                HStack {
+//                    Text(track.artists)
+//                        .font(.caption)
+//                        .foregroundColor(.gray)
+//                        .lineLimit(1)
+//                    
+//                    Spacer()
+//                    
+//                    // Format and display played time
+//                    if let playedDate = formatPlayedAt(track.playedAt) {
+//                        Text(playedDate, style: .time)
+//                            .font(.caption2)
+//                            .foregroundColor(.gray)
+//                    }
+//                }
+//            }
+//        }
+//        .padding(.vertical, 4)
+//    }
+//    
+//    // Helper function to parse Spotify's ISO 8601 date format
+//    private func formatPlayedAt(_ dateString: String) -> Date? {
+//        let formatter = ISO8601DateFormatter()
+//        formatter.formatOptions = [.withInternetDateTime]
+//        return formatter.date(from: dateString)
+//    }
+//}
 
 struct SpotifyTracksFullListView: View {
     let tracks: [SpotifyTrack]

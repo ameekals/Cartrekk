@@ -6,6 +6,7 @@
 //
 import SwiftUI
 import MapKit
+import Photos
 
 class TrackingStateManager: ObservableObject {
     static let shared = TrackingStateManager()
@@ -164,7 +165,7 @@ struct MapView: View {
     @State private var showRouteDetailsOverlay = false
     
     // Stop detection state
-    @State private var isVehicleStopped = false
+    @State private var isVehicleStopped = true
     @State private var stopDetectionTimer: Timer?
     @State private var lastKnownSpeed: CLLocationSpeed = 0
     
@@ -213,9 +214,9 @@ struct MapView: View {
                         
                         // Debug info for stop detection (remove in production)
                         if trackingManager.isTracking {
-                            Text("Speed: \(String(format: "%.1f", lastKnownSpeed * 2.237)) mph")
-                                .font(.caption)
-                                .foregroundColor(.yellow)
+//                            Text("Speed: \(String(format: "%.1f", lastKnownSpeed * 2.237)) mph")
+//                                .font(.caption)
+//                                .foregroundColor(.yellow)
                             Text(isVehicleStopped ? "STOPPED" : "MOVING")
                                 .font(.caption)
                                 .foregroundColor(isVehicleStopped ? .green : .red)
@@ -355,19 +356,60 @@ struct MapView: View {
         }
     }
     
+    @State private var uploadRetryCount = 0
+    @State private var isUploading = false
+
     private func handleCameraDismiss() {
-        if let capturedImage = capturedImage,
-           let currentRouteId = trackingManager.currentRouteId {
-            Task {
-                do {
-                    let imageURL = try await uploadImageToS3(image: capturedImage,
-                                                           bucketName: "cartrekk-images")
-                   
-                    locationService.addImageToRoute(routeID: currentRouteId, imageURL: imageURL)
+        guard let capturedImage = capturedImage,
+              let currentRouteId = trackingManager.currentRouteId else {
+            return
+        }
+        
+        // Reset retry count for new upload
+        uploadRetryCount = 0
+        isUploading = true
+        
+        uploadImageWithRetry(image: capturedImage, routeId: currentRouteId)
+    }
+
+    private func uploadImageWithRetry(image: UIImage, routeId: UUID, attempt: Int = 1) {
+        let maxRetries = 4
+        
+        print("Attempting image upload (attempt \(attempt)/\(maxRetries))")
+        
+        Task {
+            do {
+                let imageURL = try await uploadImageToS3(
+                    image: image,
+                    bucketName: "cartrekk-images"
+                )
+                
+                // Upload successful
+                DispatchQueue.main.async {
+                    self.locationService.addImageToRoute(routeID: routeId, imageURL: imageURL)
+                    self.isUploading = false
+                    print("Image uploaded to S3 successfully: \(imageURL)")
+                }
+                
+            } catch {
+                print("Upload attempt \(attempt) failed: \(error.localizedDescription)")
+                
+                if attempt < maxRetries {
+                    // Wait before retrying (exponential backoff)
+                    let delay = pow(2.0, Double(attempt - 1)) // 1s, 2s, 4s delays
                     
-                    print("Image uploaded to S3: \(imageURL)")
-                } catch {
-                    print("Upload failed: \(error.localizedDescription)")
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        self.uploadImageWithRetry(image: image, routeId: routeId, attempt: attempt + 1)
+                    }
+                } else {
+                    // All retries failed
+                    DispatchQueue.main.async {
+                        self.isUploading = false
+                        print("Image upload failed after \(maxRetries) attempts. Image saved to camera roll as backup.")
+                        
+                        // Optionally show user notification about failed upload
+                        // You could store failed uploads locally and retry later
+                    }
                 }
             }
         }
@@ -415,12 +457,41 @@ struct CameraView: UIViewControllerRepresentable {
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
             if let selectedImage = info[.originalImage] as? UIImage {
                 parent.image = selectedImage
+                
+                // Save to camera roll
+                saveImageToCameraRoll(selectedImage)
             }
             picker.dismiss(animated: true)
         }
 
         func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
             picker.dismiss(animated: true)
+        }
+        
+        private func saveImageToCameraRoll(_ image: UIImage) {
+            // Request photo library permission if not already granted
+            PHPhotoLibrary.requestAuthorization { status in
+                switch status {
+                case .authorized, .limited:
+                    PHPhotoLibrary.shared().performChanges({
+                        PHAssetChangeRequest.creationRequestForAsset(from: image)
+                    }) { success, error in
+                        DispatchQueue.main.async {
+                            if success {
+                                print("Image saved to camera roll successfully")
+                            } else if let error = error {
+                                print("Error saving image to camera roll: \(error.localizedDescription)")
+                            }
+                        }
+                    }
+                case .denied, .restricted:
+                    print("Photo library access denied")
+                case .notDetermined:
+                    print("Photo library access not determined")
+                @unknown default:
+                    print("Unknown photo library authorization status")
+                }
+            }
         }
     }
 }
