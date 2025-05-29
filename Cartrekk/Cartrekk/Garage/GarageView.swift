@@ -36,9 +36,23 @@ struct GarageView: View {
                 
                 // Selected car info
                 let currentCar = garageManager.unlockedCars[selectedIndex]
-                Text(currentCar)
-                    .font(.headline)
-                    .padding(.top)
+                let carRarity = garageManager.getCarRarity(for: currentCar)
+                
+                VStack(spacing: 8) {
+                    Text(currentCar)
+                        .font(.headline)
+                    
+                    // Rarity indicator
+                    Text(carRarity.name)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(carRarity.color.opacity(0.8))
+                        .cornerRadius(8)
+                }
+                .padding(.top)
                 
                 // Equip/Unequip Button
                 Button(action: {
@@ -58,11 +72,6 @@ struct GarageView: View {
                 }
                 .padding(.horizontal)
                 
-                // Back to Grid Button
-                Button("Back to Garage") {
-                    selectedCarIndex = nil
-                }
-                .padding()
             } else {
                 // Car Grid View
                 ScrollView {
@@ -70,11 +79,13 @@ struct GarageView: View {
                         ForEach(garageManager.getAllCars(), id: \.self) { carName in
                             let isUnlocked = garageManager.unlockedCars.contains(carName)
                             let isEquipped = garageManager.equippedCar == carName
+                            let rarity = garageManager.getCarRarity(for: carName)
                             
                             CarBoxView(
                                 carName: carName,
                                 isUnlocked: isUnlocked,
                                 isEquipped: isEquipped,
+                                rarity: rarity,
                                 action: {
                                     if isUnlocked {
                                         selectCar(carName: carName)
@@ -115,6 +126,22 @@ struct GarageView: View {
             )
         }
         .navigationTitle("Garage")
+        .navigationBarBackButtonHidden(selectedCarIndex != nil)
+        .toolbar {
+            if selectedCarIndex != nil {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        selectedCarIndex = nil
+                    }) {
+                        HStack {
+                            Image(systemName: "chevron.left")
+                            Text("Garage")
+                        }
+                        .foregroundColor(.blue)
+                    }
+                }
+            }
+        }
     }
 
     private func unlockCar(userId: String) {
@@ -166,6 +193,7 @@ struct CarBoxView: View {
     let carName: String
     let isUnlocked: Bool
     let isEquipped: Bool
+    let rarity: CarRarity
     let action: () -> Void
     
     var body: some View {
@@ -203,12 +231,33 @@ struct CarBoxView: View {
                             Spacer()
                         }
                     }
+                    
+                    // Rarity indicator in bottom right
+                    VStack {
+                        Spacer()
+                        HStack {
+                            Spacer()
+                            Text(rarity.name)
+                                .font(.caption2)
+                                .fontWeight(.bold)
+                                .foregroundColor(rarity == .common ? .black : .white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(rarity.color.opacity(0.9))
+                                .cornerRadius(4)
+                                .padding(4)
+                        }
+                    }
                 }
                 .frame(width: 140, height: 100)
                 .cornerRadius(10)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(isEquipped ? Color.green : (isUnlocked ? Color.blue : Color.gray), lineWidth: 2)
+                        .stroke(
+                            isEquipped ? Color.green :
+                            (isUnlocked ? rarity.color : Color.gray),
+                            lineWidth: isEquipped ? 3 : 2
+                        )
                 )
                 
                 Text(carName)
@@ -219,4 +268,3 @@ struct CarBoxView: View {
         .disabled(!isUnlocked)
     }
 }
-

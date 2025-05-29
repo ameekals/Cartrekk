@@ -7,6 +7,7 @@
 
 import FirebaseFirestore
 import FirebaseAuth
+import SwiftUI
 
 class GarageManager: ObservableObject {
     static let shared = GarageManager()
@@ -16,10 +17,10 @@ class GarageManager: ObservableObject {
     @Published var unlockedCars: [String] = []
     @Published var equippedCar: String? = nil
 
-    private let allCarsByRarity: [LootboxTier: [String]] = [
-        .uncommon: ["redpink_truck"],
-        .rare: ["yellow_car_stripe"],
-        .epic: ["ef"],
+    // Updated to 3-tier system
+    private let allCarsByRarity: [CarRarity: [String]] = [
+        .common: ["redpink_truck"],
+        .rare: ["yellow_car_stripe", "ef"],
         .legendary: ["blue_car_hat"]
     ]
 
@@ -33,6 +34,16 @@ class GarageManager: ObservableObject {
     
     func getAllCars() -> [String] {
         return ["redpink_truck", "yellow_car_stripe", "ef", "blue_car_hat"]
+    }
+
+    // Get rarity for a specific car
+    func getCarRarity(for carName: String) -> CarRarity {
+        for (rarity, cars) in allCarsByRarity {
+            if cars.contains(carName) {
+                return rarity
+            }
+        }
+        return .common // Default fallback
     }
 
     func fetchTotalMiles(userId: String) {
@@ -100,7 +111,7 @@ class GarageManager: ObservableObject {
             }
         }
 
-        var triedRarities = Set<LootboxTier>()
+        var triedRarities = Set<CarRarity>()
 
         while triedRarities.count < allCarsByRarity.keys.count {
             let rarity = rollForRarity()
@@ -124,24 +135,33 @@ class GarageManager: ObservableObject {
         return "No more cars available to unlock!"
     }
 
-    private func rollForRarity() -> LootboxTier {
+    // Updated to 3-tier system: Common (1-60), Rare (61-89), Legendary (90-100)
+    private func rollForRarity() -> CarRarity {
         let randomNumber = Int.random(in: 1...100)
         switch randomNumber {
-        case 1...50: return .common
-        case 51...75: return .uncommon
-        case 76...91: return .rare
-        case 92...98: return .epic
-        case 99...100: return .legendary
+        case 1...60: return .common
+        case 61...89: return .rare
+        case 90...100: return .legendary
         default: return .common
         }
     }
 }
 
-// MARK: - Lootbox Rarity Enum
-enum LootboxTier: String {
+// MARK: - Car Rarity Enum (Updated to 3-tier system)
+enum CarRarity: String, CaseIterable, Hashable {
     case common = "Common"
-    case uncommon = "Uncommon"
     case rare = "Rare"
-    case epic = "Epic"
     case legendary = "Legendary"
+    
+    var color: Color {
+        switch self {
+        case .common: return .white
+        case .rare: return .blue
+        case .legendary: return .yellow // Gold color
+        }
+    }
+    
+    var name: String {
+        return self.rawValue
+    }
 }
