@@ -23,12 +23,7 @@ struct GarageView: View {
     
     var body: some View {
         VStack {
-            if garageManager.unlockedCars.isEmpty {
-                Text("Unlock a car to view it!")
-                    .font(.headline)
-                    .foregroundColor(.gray)
-                    .padding()
-            } else if let selectedIndex = selectedCarIndex, let scene = scene {
+             if let selectedIndex = selectedCarIndex, let scene = scene {
                 // 3D Model View (shown when a car is selected)
                 SceneView(scene: scene, options: [.autoenablesDefaultLighting, .allowsCameraControl])
                     .frame(height: 400)
@@ -36,37 +31,21 @@ struct GarageView: View {
                 
                 // Selected car info
                 let currentCar = garageManager.unlockedCars[selectedIndex]
-                let carRarity = garageManager.getCarRarity(for: currentCar)
-                
-                VStack(spacing: 8) {
-                    Text(currentCar)
-                        .font(.headline)
-                    
-                    // Rarity indicator
-                    Text(carRarity.name)
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
-                        .background(carRarity.color.opacity(0.8))
-                        .cornerRadius(8)
-                }
-                .padding(.top)
+                let baseCarName = garageManager.getBaseCarName(from: currentCar)
                 
                 // Equip/Unequip Button
                 Button(action: {
-                    if garageManager.equippedCar == currentCar {
+                    if garageManager.equippedCar == baseCarName {
                         garageManager.equipCar(userId: authManager.userId ?? "", carName: "")
                     } else {
-                        garageManager.equipCar(userId: authManager.userId ?? "", carName: currentCar)
+                        garageManager.equipCar(userId: authManager.userId ?? "", carName: baseCarName)
                     }
                 }) {
-                    Text(garageManager.equippedCar == currentCar ? "Unequip Car" : "Equip Car")
+                    Text(garageManager.equippedCar == baseCarName ? "Unequip Car" : "Equip Car")
                         .font(.title2)
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(garageManager.equippedCar == currentCar ? Color.red : Color.blue)
+                        .background(garageManager.equippedCar == baseCarName ? Color.red : Color.blue)
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
@@ -77,15 +56,17 @@ struct GarageView: View {
                 ScrollView {
                     LazyVGrid(columns: columns, spacing: 20) {
                         ForEach(garageManager.getAllCars(), id: \.self) { carName in
-                            let isUnlocked = garageManager.unlockedCars.contains(carName)
+                            let isUnlocked = garageManager.getUniqueUnlockedCars().contains(carName)
                             let isEquipped = garageManager.equippedCar == carName
                             let rarity = garageManager.getCarRarity(for: carName)
+                            let duplicateCount = garageManager.getDuplicateCount(for: carName)
                             
                             CarBoxView(
                                 carName: carName,
                                 isUnlocked: isUnlocked,
                                 isEquipped: isEquipped,
                                 rarity: rarity,
+                                duplicateCount: duplicateCount,
                                 action: {
                                     if isUnlocked {
                                         selectCar(carName: carName)
@@ -157,7 +138,10 @@ struct GarageView: View {
     }
     
     private func selectCar(carName: String) {
-        guard let index = garageManager.unlockedCars.firstIndex(of: carName) else { return }
+        // Find the first unlocked instance of this car (base name)
+        guard let index = garageManager.unlockedCars.firstIndex(where: {
+            garageManager.getBaseCarName(from: $0) == carName
+        }) else { return }
         selectedCarIndex = index
         loadCarModel()
     }
@@ -167,8 +151,9 @@ struct GarageView: View {
         guard selectedIndex < garageManager.unlockedCars.count else { return }
 
         let carName = garageManager.unlockedCars[selectedIndex]
-        guard let url = Bundle.main.url(forResource: carName, withExtension: "ply") else {
-            print("Error: \(carName).ply not found in App Bundle.")
+        let baseCarName = garageManager.getBaseCarName(from: carName)
+        guard let url = Bundle.main.url(forResource: baseCarName, withExtension: "ply") else {
+            print("Error: \(baseCarName).ply not found in App Bundle.")
             return
         }
 
@@ -183,7 +168,7 @@ struct GarageView: View {
                 }
             }
         } catch {
-            print("Failed to load \(carName).ply: \(error.localizedDescription)")
+            print("Failed to load \(baseCarName).ply: \(error.localizedDescription)")
         }
     }
 }
@@ -194,6 +179,7 @@ struct CarBoxView: View {
     let isUnlocked: Bool
     let isEquipped: Bool
     let rarity: CarRarity
+    let duplicateCount: Int
     let action: () -> Void
     
     var body: some View {
@@ -232,6 +218,25 @@ struct CarBoxView: View {
                         }
                     }
                     
+                    // Duplicate count indicator (top left)
+                    if isUnlocked && duplicateCount > 1 {
+                        VStack {
+                            HStack {
+                                Text("x\(duplicateCount)")
+                                    .font(.caption)
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.black.opacity(0.7))
+                                    .cornerRadius(8)
+                                    .padding(4)
+                                Spacer()
+                            }
+                            Spacer()
+                        }
+                    }
+                    
                     // Rarity indicator in bottom right
                     VStack {
                         Spacer()
@@ -259,10 +264,6 @@ struct CarBoxView: View {
                             lineWidth: isEquipped ? 3 : 2
                         )
                 )
-                
-                Text(carName)
-                    .font(.caption)
-                    .foregroundColor(isUnlocked ? .primary : .gray)
             }
         }
         .disabled(!isUnlocked)
