@@ -11,9 +11,9 @@ import SceneKit
 struct GarageView: View {
     @ObservedObject var garageManager = GarageManager.shared
     @State private var selectedCarIndex: Int? = nil
-    @State private var scene: SCNScene? = nil
-    @State private var showUnlockAlert = false
-    @State private var unlockedCar: String? = nil
+    @State private var currentCarouselIndex: Int = 0
+    @State private var carouselScenes: [SCNScene?] = []
+    @State private var dragOffset: CGFloat = 0
     @EnvironmentObject var authManager: AuthenticationManager
     
     // Grid layout configuration
@@ -23,33 +23,62 @@ struct GarageView: View {
     
     var body: some View {
         VStack {
-             if let selectedIndex = selectedCarIndex, let scene = scene {
-                // 3D Model View (shown when a car is selected)
-                SceneView(scene: scene, options: [.autoenablesDefaultLighting, .allowsCameraControl])
-                    .frame(height: 400)
-                    .cornerRadius(10)
+            if garageManager.unlockedCars.isEmpty {
+                Text("Unlock a car to view it!")
+                    .font(.headline)
+                    .foregroundColor(.gray)
+                    .padding()
+            } else if selectedCarIndex != nil {
+                // 3D Carousel View
+                Car3DCarouselView(
+                    currentIndex: $currentCarouselIndex,
+                    scenes: carouselScenes,
+                    allCars: getAllCarsForCarousel(),
+                    unlockedCars: Set(garageManager.getUniqueUnlockedCars()),
+                    onSwipe: { direction in
+                        handleCarouselSwipe(direction: direction)
+                    }
+                )
+                .frame(height: 400)
                 
                 // Selected car info
-                let currentCar = garageManager.unlockedCars[selectedIndex]
-                let baseCarName = garageManager.getBaseCarName(from: currentCar)
+                let allCars = getAllCarsForCarousel()
+                let currentCarName = allCars[currentCarouselIndex]
+                let isUnlocked = garageManager.getUniqueUnlockedCars().contains(currentCarName)
                 
-                // Equip/Unequip Button
-                Button(action: {
-                    if garageManager.equippedCar == baseCarName {
-                        garageManager.equipCar(userId: authManager.userId ?? "", carName: "")
-                    } else {
-                        garageManager.equipCar(userId: authManager.userId ?? "", carName: baseCarName)
+                if isUnlocked {
+                    // Equip/Unequip Button
+                    Button(action: {
+                        if garageManager.equippedCar == currentCarName {
+                            garageManager.equipCar(userId: authManager.userId ?? "", carName: "")
+                        } else {
+                            garageManager.equipCar(userId: authManager.userId ?? "", carName: currentCarName)
+                        }
+                    }) {
+                        Text(garageManager.equippedCar == currentCarName ? "Unequip Car" : "Equip Car")
+                            .font(.title2)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(garageManager.equippedCar == currentCarName ? Color.red : Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
                     }
-                }) {
-                    Text(garageManager.equippedCar == baseCarName ? "Unequip Car" : "Equip Car")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(garageManager.equippedCar == baseCarName ? Color.red : Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
+                    .padding(.horizontal)
+                } else {
+                    // Locked car indicator
+                    VStack {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 30))
+                            .foregroundColor(.gray)
+                        Text("Car Locked")
+                            .font(.headline)
+                            .foregroundColor(.gray)
+                        Text("Unlock this car to equip it")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    .padding()
                 }
-                .padding(.horizontal)
                 
             } else {
                 // Car Grid View
@@ -68,9 +97,7 @@ struct GarageView: View {
                                 rarity: rarity,
                                 duplicateCount: duplicateCount,
                                 action: {
-                                    if isUnlocked {
-                                        selectCar(carName: carName)
-                                    }
+                                    selectCar(carName: carName)
                                 }
                             )
                         }
@@ -99,13 +126,6 @@ struct GarageView: View {
                 garageManager.fetchEquippedCar(userId: userId)
             }
         }
-        .alert(isPresented: $showUnlockAlert) {
-            Alert(
-                title: Text("Car Unlocked!"),
-                message: Text("\(unlockedCar ?? "a car")!"),
-                dismissButton: .default(Text("OK"))
-            )
-        }
         .navigationTitle("Garage")
         .navigationBarBackButtonHidden(selectedCarIndex != nil)
         .toolbar {
@@ -113,10 +133,12 @@ struct GarageView: View {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
                         selectedCarIndex = nil
+                        carouselScenes = []
+                        currentCarouselIndex = 0
                     }) {
                         HStack {
                             Image(systemName: "chevron.left")
-                            Text("Garage")
+                            Text("Back")
                         }
                         .foregroundColor(.blue)
                     }
@@ -126,54 +148,227 @@ struct GarageView: View {
     }
 
     private func unlockCar(userId: String) {
-        if let newCar = garageManager.unlockCar(userId: userId) {
-            unlockedCar = newCar
-            showUnlockAlert = true
-            
-            // If we're in the detail view, load the new car if that's what was unlocked
-            if let selectedIndex = selectedCarIndex {
-                loadCarModel()
+        if let newCarMessage = garageManager.unlockCar(userId: userId) {
+            // Find the newly unlocked car and open its 3D view
+            if let lastUnlockedCar = garageManager.unlockedCars.last {
+                let baseCarName = garageManager.getBaseCarName(from: lastUnlockedCar)
+                selectCar(carName: baseCarName)
             }
         }
     }
     
     private func selectCar(carName: String) {
-        // Find the first unlocked instance of this car (base name)
-        guard let index = garageManager.unlockedCars.firstIndex(where: {
-            garageManager.getBaseCarName(from: $0) == carName
-        }) else { return }
-        selectedCarIndex = index
-        loadCarModel()
+        selectedCarIndex = 0 // Just mark that we're in 3D view
+        let allCars = getAllCarsForCarousel()
+        currentCarouselIndex = allCars.firstIndex(of: carName) ?? 0
+        loadAllCarModels()
+    }
+    
+    private func getAllCarsForCarousel() -> [String] {
+        return garageManager.getAllCars()
+    }
+    
+    private func handleCarouselSwipe(direction: SwipeDirection) {
+        let allCars = getAllCarsForCarousel()
+        
+        switch direction {
+        case .left:
+            currentCarouselIndex = (currentCarouselIndex + 1) % allCars.count
+        case .right:
+            currentCarouselIndex = (currentCarouselIndex - 1 + allCars.count) % allCars.count
+        }
     }
 
-    private func loadCarModel() {
-        guard let selectedIndex = selectedCarIndex else { return }
-        guard selectedIndex < garageManager.unlockedCars.count else { return }
-
-        let carName = garageManager.unlockedCars[selectedIndex]
-        let baseCarName = garageManager.getBaseCarName(from: carName)
-        guard let url = Bundle.main.url(forResource: baseCarName, withExtension: "ply") else {
-            print("Error: \(baseCarName).ply not found in App Bundle.")
+    private func loadAllCarModels() {
+        let allCars = getAllCarsForCarousel()
+        carouselScenes = Array(repeating: nil, count: allCars.count)
+        
+        // Load models asynchronously
+        for (index, carName) in allCars.enumerated() {
+            loadCarModel(for: carName, at: index)
+        }
+    }
+    
+    private func loadCarModel(for carName: String, at index: Int) {
+        guard let url = Bundle.main.url(forResource: carName, withExtension: "ply") else {
+            print("Error: \(carName).ply not found in App Bundle.")
             return
         }
 
-        do {
-            let carScene = try SCNScene(url: url, options: nil)
-            DispatchQueue.main.async {
-                self.scene = carScene
-                if let carNode = carScene.rootNode.childNodes.first {
-                    carNode.eulerAngles.x = (-.pi / 2) + (.pi / 8)
-                    carNode.eulerAngles.y = -(.pi / 8)
-                    carNode.position.y -= 0.7 // Move the model down
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let carScene = try SCNScene(url: url, options: nil)
+                
+                DispatchQueue.main.async {
+                    if let carNode = carScene.rootNode.childNodes.first {
+                        carNode.eulerAngles.x = (-.pi / 2) + (.pi / 8)
+                        carNode.eulerAngles.y = -(.pi / 8)
+                        carNode.position.y -= 0.7
+                    }
+                    
+                    if index < self.carouselScenes.count {
+                        self.carouselScenes[index] = carScene
+                    }
                 }
+            } catch {
+                print("Failed to load \(carName).ply: \(error.localizedDescription)")
             }
-        } catch {
-            print("Failed to load \(baseCarName).ply: \(error.localizedDescription)")
         }
     }
 }
 
-// Car Box Component
+// MARK: - 3D Carousel View
+struct Car3DCarouselView: View {
+    @Binding var currentIndex: Int
+    let scenes: [SCNScene?]
+    let allCars: [String]
+    let unlockedCars: Set<String>
+    let onSwipe: (SwipeDirection) -> Void
+    
+    @State private var dragOffset: CGFloat = 0
+    @State private var isDragging: Bool = false
+    
+    var body: some View {
+        GeometryReader { geometry in
+            HStack(spacing: 0) {
+                // Previous car (left side)
+                if allCars.count > 1 {
+                    let prevIndex = (currentIndex - 1 + allCars.count) % allCars.count
+                    CarouselItemView(
+                        scene: scenes.indices.contains(prevIndex) ? scenes[prevIndex] : nil,
+                        carName: allCars[prevIndex],
+                        isUnlocked: unlockedCars.contains(allCars[prevIndex]),
+                        scale: 0.6,
+                        opacity: 0.5
+                    )
+                    .frame(width: geometry.size.width * 0.25)
+                    .offset(x: dragOffset * 0.3)
+                }
+                
+                Spacer()
+                
+                // Current car (center)
+                CarouselItemView(
+                    scene: scenes.indices.contains(currentIndex) ? scenes[currentIndex] : nil,
+                    carName: allCars[currentIndex],
+                    isUnlocked: unlockedCars.contains(allCars[currentIndex]),
+                    scale: 1.0,
+                    opacity: 1.0
+                )
+                .frame(width: geometry.size.width * 0.5)
+                .offset(x: dragOffset * 0.8)
+                
+                Spacer()
+                
+                // Next car (right side)
+                if allCars.count > 1 {
+                    let nextIndex = (currentIndex + 1) % allCars.count
+                    CarouselItemView(
+                        scene: scenes.indices.contains(nextIndex) ? scenes[nextIndex] : nil,
+                        carName: allCars[nextIndex],
+                        isUnlocked: unlockedCars.contains(allCars[nextIndex]),
+                        scale: 0.6,
+                        opacity: 0.5
+                    )
+                    .frame(width: geometry.size.width * 0.25)
+                    .offset(x: dragOffset * 0.3)
+                }
+            }
+        }
+        .gesture(
+            DragGesture()
+                .onChanged { gesture in
+                    isDragging = true
+                    dragOffset = gesture.translation.width
+                }
+                .onEnded { gesture in
+                    isDragging = false
+                    
+                    let threshold: CGFloat = 50
+                    let translationX = gesture.translation.width
+                    
+                    if translationX > threshold {
+                        onSwipe(.right)
+                    } else if translationX < -threshold {
+                        onSwipe(.left)
+                    }
+                    
+                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                        dragOffset = 0
+                    }
+                }
+        )
+        .animation(.spring(response: 0.5, dampingFraction: 0.8), value: currentIndex)
+    }
+}
+
+// MARK: - Carousel Item View
+struct CarouselItemView: View {
+    let scene: SCNScene?
+    let carName: String
+    let isUnlocked: Bool
+    let scale: CGFloat
+    let opacity: Double
+    
+    var body: some View {
+        ZStack {
+            if let scene = scene {
+                SceneView(      
+                    scene: {
+                        let scene = scene
+                        scene.background.contents = UIColor.black
+                        return scene
+                    }(),
+                    options: [.autoenablesDefaultLighting, .allowsCameraControl],
+                    preferredFramesPerSecond: 60,
+                    antialiasingMode: .multisampling4X,
+                    delegate: nil,
+                    technique: nil
+                )
+                .background(Color.black)
+                .scaleEffect(scale)
+                .opacity(opacity)
+                .allowsHitTesting(scale == 1.0) // Only allow interaction with center car
+            } else {
+                // Loading placeholder
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.black)
+                    .overlay(
+                        ProgressView()
+                            .scaleEffect(scale)
+                    )
+                    .scaleEffect(scale)
+                    .opacity(opacity)
+            }
+            
+            // Locked overlay
+            if !isUnlocked {
+                Color.black.opacity(0.6)
+                    .overlay(
+                        VStack {
+                            Image(systemName: "lock.fill")
+                                .font(.system(size: 30 * scale))
+                                .foregroundColor(.white)
+                            Text("Locked")
+                                .font(.caption)
+                                .fontWeight(.bold)
+                                .foregroundColor(.white)
+                        }
+                    )
+                    .scaleEffect(scale)
+                    .opacity(opacity)
+            }
+        }
+        .cornerRadius(10)
+    }
+}
+
+// MARK: - Swipe Direction Enum
+enum SwipeDirection {
+    case left, right
+}
+
+// Car Box Component (unchanged)
 struct CarBoxView: View {
     let carName: String
     let isUnlocked: Bool
