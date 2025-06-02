@@ -204,7 +204,14 @@ struct GarageView: View {
                         carNode.eulerAngles.x = (-.pi / 2) + (.pi / 8)
                         carNode.eulerAngles.y = -(.pi / 8)
                         carNode.position.y -= 0.7
+                        // Don't set scale here - it will be set dynamically in CarouselItemView
                     }
+                    
+                    // Add a camera positioned further back for better framing
+                    let cameraNode = SCNNode()
+                    cameraNode.camera = SCNCamera()
+                    cameraNode.position = SCNVector3(x: 0, y: 0, z: 4) // Move camera further back
+                    carScene.rootNode.addChildNode(cameraNode)
                     
                     if index < self.carouselScenes.count {
                         self.carouselScenes[index] = carScene
@@ -313,11 +320,30 @@ struct CarouselItemView: View {
     var body: some View {
         ZStack {
             if let scene = scene {
-                SceneView(      
+                SceneView(
                     scene: {
-                        let scene = scene
-                        scene.background.contents = UIColor.black
-                        return scene
+                        // Create a new scene and clone the car node
+                        let newScene = SCNScene()
+                        newScene.background.contents = UIColor.black
+                        
+                        // Clone the car node from the original scene
+                        if let originalCarNode = scene.rootNode.childNodes.first {
+                            let clonedCarNode = originalCarNode.clone()
+                            
+                            // Apply different scales based on position
+                            let carScale: Float = scale == 1.0 ? 0.6 : 0.3 // 0.6 for center, 0.3 for sides
+                            clonedCarNode.scale = SCNVector3(carScale, carScale, carScale)
+                            
+                            newScene.rootNode.addChildNode(clonedCarNode)
+                        }
+                        
+                        // Add camera
+                        let cameraNode = SCNNode()
+                        cameraNode.camera = SCNCamera()
+                        cameraNode.position = SCNVector3(x: 0, y: 0, z: 4)
+                        newScene.rootNode.addChildNode(cameraNode)
+                        
+                        return newScene
                     }(),
                     options: [.autoenablesDefaultLighting, .allowsCameraControl],
                     preferredFramesPerSecond: 60,
