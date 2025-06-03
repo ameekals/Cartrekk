@@ -7,6 +7,7 @@
 
 import FirebaseFirestore
 import FirebaseAuth
+import SwiftUI
 
 class GarageManager: ObservableObject {
     static let shared = GarageManager()
@@ -16,12 +17,15 @@ class GarageManager: ObservableObject {
     @Published var unlockedCars: [String] = []
     @Published var equippedCar: String? = nil
 
-    private let allCarsByRarity: [LootboxTier: [String]] = [
-        .uncommon: ["redpink_truck"],
-        .rare: ["yellow_car_stripe"],
-        .epic: ["ef"],
+    // Updated to 3-tier system
+    private let allCarsByRarity: [CarRarity: [String]] = [
+        .common: ["redpink_truck"],
+        .rare: ["yellow_car_stripe", "ef"],
         .legendary: ["blue_car_hat"]
     ]
+    
+    // Delimiter for car duplicates
+    private let duplicateDelimiter = "#"
 
     private init() {
         if let userId = Auth.auth().currentUser?.uid {
@@ -33,6 +37,38 @@ class GarageManager: ObservableObject {
     
     func getAllCars() -> [String] {
         return ["redpink_truck", "yellow_car_stripe", "ef", "blue_car_hat"]
+    }
+
+    // Get rarity for a specific car
+    func getCarRarity(for carName: String) -> CarRarity {
+        let baseCarName = getBaseCarName(from: carName)
+        for (rarity, cars) in allCarsByRarity {
+            if cars.contains(baseCarName) {
+                return rarity
+            }
+        }
+        return .common // Default fallback
+    }
+    
+    // Extract base car name without duplicate suffix
+    func getBaseCarName(from carName: String) -> String {
+        if let delimiterIndex = carName.firstIndex(of: Character(duplicateDelimiter)) {
+            return String(carName[..<delimiterIndex])
+        }
+        return carName
+    }
+    
+    // Get duplicate count for a car
+    func getDuplicateCount(for carName: String) -> Int {
+        let baseCarName = getBaseCarName(from: carName)
+        let duplicates = unlockedCars.filter { getBaseCarName(from: $0) == baseCarName }
+        return duplicates.count
+    }
+    
+    // Get unique cars (without duplicates) for display
+    func getUniqueUnlockedCars() -> [String] {
+        let uniqueBaseNames = Set(unlockedCars.map { getBaseCarName(from: $0) })
+        return Array(uniqueBaseNames)
     }
 
     func fetchTotalMiles(userId: String) {
@@ -73,13 +109,17 @@ class GarageManager: ObservableObject {
         // If carName is empty, it means we're unequipping
         // If not empty, verify the car is unlocked before equipping
         if !carName.isEmpty {
-            guard unlockedCars.contains(carName) else { return }
+            let baseCarName = getBaseCarName(from: carName)
+            guard unlockedCars.contains(where: { getBaseCarName(from: $0) == baseCarName }) else { return }
         }
         
-        FirestoreManager.shared.equipCar(userId: userId, carName: carName) { [weak self] success, message in
+        // Store the base car name for equipped car (without duplicate suffix)
+        let equippedCarName = carName.isEmpty ? "" : getBaseCarName(from: carName)
+        
+        FirestoreManager.shared.equipCar(userId: userId, carName: equippedCarName) { [weak self] success, message in
             if success {
                 DispatchQueue.main.async {
-                    self?.equippedCar = carName
+                    self?.equippedCar = equippedCarName
                 }
             }
             print(message)
@@ -87,7 +127,7 @@ class GarageManager: ObservableObject {
     }
 
     func unlockCar(userId: String) -> String? {
-        let minimum_miles_to_unlock = 1.0
+        let minimum_miles_to_unlock = 25.0
         guard usableMiles >= minimum_miles_to_unlock else { return "Not enough miles to unlock a car!" }
 
         usableMiles -= minimum_miles_to_unlock
@@ -100,48 +140,61 @@ class GarageManager: ObservableObject {
             }
         }
 
-        var triedRarities = Set<LootboxTier>()
-
-        while triedRarities.count < allCarsByRarity.keys.count {
-            let rarity = rollForRarity()
-            triedRarities.insert(rarity)
-
-            guard let availableCars = allCarsByRarity[rarity]?.filter({ !unlockedCars.contains($0) }),
-                  let car = availableCars.randomElement() else {
-                print("No cars found for rarity: \(rarity)")
-                continue
-            }
-
-            unlockedCars.append(car)
-
-            FirestoreManager.shared.addCarToInventory(userId: userId, carName: car) { success, message in
-                print(message)
-            }
-
-            return "You unlocked \(car)!"
+        let rarity = rollForRarity()
+        
+        guard let availableCars = allCarsByRarity[rarity],
+              let selectedBaseCar = availableCars.randomElement() else {
+            return "No cars available for rarity: \(rarity)"
         }
 
-        return "No more cars available to unlock!"
+        // Check how many duplicates we already have
+        let currentDuplicates = unlockedCars.filter { getBaseCarName(from: $0) == selectedBaseCar }
+        let duplicateCount = currentDuplicates.count + 1
+        
+        // Create the car name with duplicate suffix for local storage
+        let carWithDuplicateNumber = "\(selectedBaseCar)\(duplicateDelimiter)\(duplicateCount)"
+        
+        unlockedCars.append(carWithDuplicateNumber)
+
+        // For Firestore, update or add the car with count
+        FirestoreManager.shared.addOrUpdateCarInInventory(userId: userId, carName: selectedBaseCar, newCount: duplicateCount) { success, message in
+            print(message)
+        }
+
+        if duplicateCount > 1 {
+            return "You unlocked \(selectedBaseCar) (Copy \(duplicateCount))!"
+        } else {
+            return "You unlocked \(selectedBaseCar)!"
+        }
     }
 
-    private func rollForRarity() -> LootboxTier {
+    // Updated to 3-tier system: Common (1-60), Rare (61-89), Legendary (90-100)
+    private func rollForRarity() -> CarRarity {
         let randomNumber = Int.random(in: 1...100)
         switch randomNumber {
-        case 1...50: return .common
-        case 51...75: return .uncommon
-        case 76...91: return .rare
-        case 92...98: return .epic
-        case 99...100: return .legendary
+        case 1...60: return .common
+        case 61...89: return .rare
+        case 90...100: return .legendary
         default: return .common
         }
     }
 }
 
-// MARK: - Lootbox Rarity Enum
-enum LootboxTier: String {
+// MARK: - Car Rarity Enum (Updated to 3-tier system)
+enum CarRarity: String, CaseIterable, Hashable {
     case common = "Common"
-    case uncommon = "Uncommon"
     case rare = "Rare"
-    case epic = "Epic"
     case legendary = "Legendary"
+    
+    var color: Color {
+        switch self {
+        case .common: return .white
+        case .rare: return .blue
+        case .legendary: return .yellow // Gold color
+        }
+    }
+    
+    var name: String {
+        return self.rawValue
+    }
 }
