@@ -179,6 +179,19 @@ class LocationTrackingService: NSObject, ObservableObject, CLLocationManagerDele
         }
     }
     
+    func deleteRoute(userId: String, routeID: UUID, completion: @escaping () -> Void) {
+        firestoreManager.deleteRoute(routeId: routeID.uuidString) { success in
+            DispatchQueue.main.async {
+                if success {
+                    print("Successfully deleted route")
+                } else {
+                    print("Error deleting route")
+                }
+                completion() 
+            }
+        }
+    }
+    
     func addImageToRoute(routeID: UUID?, imageURL: String) {
         guard let route_id = routeID?.uuidString else {
             print("Invalid route ID")

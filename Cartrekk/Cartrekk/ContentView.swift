@@ -307,39 +307,49 @@ struct UsernameSetupView: View {
 // MARK: - Main App View
 struct MainAppView: View {
     @EnvironmentObject var authManager: AuthenticationManager
+    @StateObject private var trackingManager = TrackingStateManager.shared
     @State private var selectedTab = 1
     
     var body: some View {
-        TabView(selection: $selectedTab) {
-            ExploreView()
-                .tabItem {
-                    Image(systemName: "globe")
-                    Text("Explore")
-                }
-                .tag(0)
+        ZStack {
+            TabView(selection: $selectedTab) {
+                ExploreView()
+                    .tabItem {
+                        Image(systemName: "globe")
+                        Text("Explore")
+                    }
+                    .tag(0)
 
-                
-            MapView()
-                .tabItem {
-                    Image(systemName: "map")
-                    Text("Map")
-                }
-                .tag(1)
-                
-            ProfileView()
-                .tabItem {
-                    Image(systemName: "person.circle")
-                    Text("Profile")
-                }
-                .tag(2)
+                MapView()
+                    .tabItem {
+                        Image(systemName: "map")
+                        Text("Map")
+                    }
+                    .tag(1)
+                    
+                ProfileView()
+                    .tabItem {
+                        Image(systemName: "person.circle")
+                        Text("Profile")
+                    }
+                    .tag(2)
+            }
+            .accentColor(.blue)
+            .background(Color.black.edgesIgnoringSafeArea(.all))
+            .preferredColorScheme(.dark)
+            // Hide tab bar when tracking is active
+            .toolbar(trackingManager.isTracking ? .hidden : .visible, for: .tabBar)
+            
+            // Full screen tracking overlay when tracking
+            if trackingManager.isTracking && selectedTab == 1 {
+                TrackingOverlayView()
+                    .ignoresSafeArea(.all)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .animation(.easeInOut(duration: 0.3), value: trackingManager.isTracking)
+            }
         }
-        .accentColor(.blue)
-        .background(Color.black.edgesIgnoringSafeArea(.all))
-        .preferredColorScheme(.dark)
     }
 }
-
-
 
 
 #Preview {
