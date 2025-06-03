@@ -23,12 +23,7 @@ struct GarageView: View {
     
     var body: some View {
         VStack {
-            if garageManager.unlockedCars.isEmpty {
-                Text("Unlock a car to view it!")
-                    .font(.headline)
-                    .foregroundColor(.gray)
-                    .padding()
-            } else if selectedCarIndex != nil {
+            if selectedCarIndex != nil {
                 // 3D Carousel View
                 Car3DCarouselView(
                     currentIndex: $currentCarouselIndex,
@@ -39,7 +34,7 @@ struct GarageView: View {
                         handleCarouselSwipe(direction: direction)
                     }
                 )
-                .frame(height: 400)
+                .frame(height: 500)
                 
                 // Selected car info
                 let allCars = getAllCarsForCarousel()
@@ -113,10 +108,10 @@ struct GarageView: View {
                         .font(.title2)
                         .padding()
                         .frame(maxWidth: .infinity)
-                        .background(garageManager.usableMiles >= 1 ? Color.green : Color.gray)
+                        .background(garageManager.usableMiles >= 25 ? Color.green : Color.gray)
                         .foregroundColor(.white)
                         .cornerRadius(10)
-                        .disabled(garageManager.usableMiles < 1)
+                        .disabled(garageManager.usableMiles < 25)
                 }
                 .padding()
             }
@@ -234,6 +229,7 @@ struct Car3DCarouselView: View {
     
     @State private var dragOffset: CGFloat = 0
     @State private var isDragging: Bool = false
+    @State private var isCenterCarInteracting: Bool = false
     
     var body: some View {
         GeometryReader { geometry in
@@ -250,6 +246,7 @@ struct Car3DCarouselView: View {
                     )
                     .frame(width: geometry.size.width * 0.25)
                     .offset(x: dragOffset * 0.3)
+                    .contentShape(Rectangle()) // Make entire area tappable/draggable
                 }
                 
                 Spacer()
@@ -264,6 +261,18 @@ struct Car3DCarouselView: View {
                 )
                 .frame(width: geometry.size.width * 0.5)
                 .offset(x: dragOffset * 0.8)
+                .simultaneousGesture(
+                    DragGesture()
+                        .onChanged { _ in
+                            isCenterCarInteracting = true
+                        }
+                        .onEnded { _ in
+                            // Small delay to prevent immediate carousel interaction
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                isCenterCarInteracting = false
+                            }
+                        }
+                )
                 
                 Spacer()
                 
@@ -279,32 +288,65 @@ struct Car3DCarouselView: View {
                     )
                     .frame(width: geometry.size.width * 0.25)
                     .offset(x: dragOffset * 0.3)
+                    .contentShape(Rectangle()) // Make entire area tappable/draggable
                 }
             }
+            .contentShape(Rectangle()) // Make the entire HStack draggable
+            .simultaneousGesture(
+                // Apply drag gesture only to left and right areas, not center
+                DragGesture()
+                    .onChanged { gesture in
+                        // Don't process carousel drag if center car is being interacted with
+                        guard !isCenterCarInteracting else { return }
+                        
+                        let location = gesture.location
+                        let centerStart = geometry.size.width * 0.25
+                        let centerEnd = geometry.size.width * 0.75
+                        
+                        // Only process drag if not in center car area
+                        if location.x < centerStart || location.x > centerEnd {
+                            isDragging = true
+                            dragOffset = gesture.translation.width
+                        }
+                    }
+                    .onEnded { gesture in
+                        // Don't process carousel drag if center car is being interacted with
+                        guard !isCenterCarInteracting else {
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                dragOffset = 0
+                            }
+                            return
+                        }
+                        
+                        let location = gesture.startLocation
+                        let centerStart = geometry.size.width * 0.25
+                        let centerEnd = geometry.size.width * 0.75
+                        
+                        // Only process swipe if drag started outside center car area
+                        if location.x < centerStart || location.x > centerEnd {
+                            isDragging = false
+                            
+                            let threshold: CGFloat = 50
+                            let translationX = gesture.translation.width
+                            
+                            if translationX > threshold {
+                                onSwipe(.right)
+                            } else if translationX < -threshold {
+                                onSwipe(.left)
+                            }
+                            
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                dragOffset = 0
+                            }
+                        } else {
+                            // Reset drag offset if gesture was in center
+                            withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
+                                dragOffset = 0
+                            }
+                        }
+                    }
+            )
         }
-        .gesture(
-            DragGesture()
-                .onChanged { gesture in
-                    isDragging = true
-                    dragOffset = gesture.translation.width
-                }
-                .onEnded { gesture in
-                    isDragging = false
-                    
-                    let threshold: CGFloat = 50
-                    let translationX = gesture.translation.width
-                    
-                    if translationX > threshold {
-                        onSwipe(.right)
-                    } else if translationX < -threshold {
-                        onSwipe(.left)
-                    }
-                    
-                    withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) {
-                        dragOffset = 0
-                    }
-                }
-        )
         .animation(.spring(response: 0.5, dampingFraction: 0.8), value: currentIndex)
     }
 }
@@ -331,16 +373,17 @@ struct CarouselItemView: View {
                             let clonedCarNode = originalCarNode.clone()
                             
                             // Apply different scales based on position
-                            let carScale: Float = scale == 1.0 ? 0.6 : 0.3 // 0.6 for center, 0.3 for sides
+                            let carScale: Float = scale == 1.0 ? 0.8 : 0.3 // 0.8 for center, 0.3 for sides
                             clonedCarNode.scale = SCNVector3(carScale, carScale, carScale)
                             
                             newScene.rootNode.addChildNode(clonedCarNode)
                         }
                         
-                        // Add camera
+                        // Add camera - positioned further back for center car to accommodate larger size
                         let cameraNode = SCNNode()
                         cameraNode.camera = SCNCamera()
-                        cameraNode.position = SCNVector3(x: 0, y: 0, z: 4)
+                        let cameraDistance: Float = scale == 1.0 ? 6.0 : 4.0 // Further back for center car
+                        cameraNode.position = SCNVector3(x: 0, y: 0, z: cameraDistance)
                         newScene.rootNode.addChildNode(cameraNode)
                         
                         return newScene
@@ -354,7 +397,7 @@ struct CarouselItemView: View {
                 .background(Color.black)
                 .scaleEffect(scale)
                 .opacity(opacity)
-                .allowsHitTesting(scale == 1.0) // Only allow interaction with center car
+                .allowsHitTesting(scale == 1.0) // Allow interaction only with center car
             } else {
                 // Loading placeholder
                 RoundedRectangle(cornerRadius: 10)
