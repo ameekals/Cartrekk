@@ -14,6 +14,7 @@ struct GarageView: View {
     @State private var currentCarouselIndex: Int = 0
     @State private var carouselScenes: [SCNScene?] = []
     @State private var dragOffset: CGFloat = 0
+    @State private var showTutorial: Bool = false
     @EnvironmentObject var authManager: AuthenticationManager
     
     // Grid layout configuration
@@ -77,41 +78,88 @@ struct GarageView: View {
                 
             } else {
                 // Car Grid View
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 20) {
-                        ForEach(garageManager.getAllCars(), id: \.self) { carName in
-                            let isUnlocked = garageManager.getUniqueUnlockedCars().contains(carName)
-                            let isEquipped = garageManager.equippedCar == carName
-                            let rarity = garageManager.getCarRarity(for: carName)
-                            let duplicateCount = garageManager.getDuplicateCount(for: carName)
-                            
-                            CarBoxView(
-                                carName: carName,
-                                isUnlocked: isUnlocked,
-                                isEquipped: isEquipped,
-                                rarity: rarity,
-                                duplicateCount: duplicateCount,
-                                action: {
-                                    selectCar(carName: carName)
+                ZStack(alignment: .topTrailing) {
+                    ScrollView {
+                        LazyVGrid(columns: columns, spacing: 20) {
+                            ForEach(garageManager.getAllCars(), id: \.self) { carName in
+                                let isUnlocked = garageManager.getUniqueUnlockedCars().contains(carName)
+                                let isEquipped = garageManager.equippedCar == carName
+                                let rarity = garageManager.getCarRarity(for: carName)
+                                let duplicateCount = garageManager.getDuplicateCount(for: carName)
+                                
+                                CarBoxView(
+                                    carName: carName,
+                                    isUnlocked: isUnlocked,
+                                    isEquipped: isEquipped,
+                                    rarity: rarity,
+                                    duplicateCount: duplicateCount,
+                                    action: {
+                                        selectCar(carName: carName)
+                                    }
+                                )
+                            }
+                        }
+                        .padding()
+                        .padding(.bottom, 80) // Add bottom padding to prevent overlap with button
+                    }
+                    
+                    // Tutorial Dropdown positioned at button location
+                    if showTutorial {
+                        VStack {
+                            HStack {
+                                Spacer()
+                                TutorialDropdownView(
+                                    usablePoints: garageManager.usableMiles,
+                                    onDismiss: {
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            showTutorial = false
+                                        }
+                                    }
+                                )
+                            }
+                            .padding(.top, 8) // Small offset from navigation bar
+                            .padding(.trailing, 16) // Align with button position
+                            Spacer()
+                        }
+                        .transition(.asymmetric(
+                            insertion: .opacity.combined(with: .scale(scale: 0.8, anchor: .topTrailing)),
+                            removal: .opacity.combined(with: .scale(scale: 0.8, anchor: .topTrailing))
+                        ))
+                    }
+                }
+                
+                Spacer() // Push button to bottom
+                
+                // Unlock Button - fixed at bottom
+                ZStack {
+                    Button(action: { unlockCar(userId: authManager.userId!) }) {
+                        Text("Unlock Car")
+                            .font(.title2)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(garageManager.usableMiles >= 25 ? Color.green : Color.gray)
+                            .foregroundColor(.white)
+                            .cornerRadius(10)
+                    }
+                    .disabled(garageManager.usableMiles < 25)
+                    
+                    if garageManager.usableMiles < 25 {
+                        // Lock overlay using same style as carousel
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.black.opacity(0.6))
+                            .overlay(
+                                VStack {
+                                    Image(systemName: "lock.fill")
+                                        .font(.system(size: 30))
+                                        .foregroundColor(.white)
+                                    Text("Locked")
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
                                 }
                             )
-                        }
+                            .allowsHitTesting(false)
                     }
-                    .padding()
-                }
-            }
-
-            // Unlock Button - only visible in inventory view
-            if selectedCarIndex == nil {
-                Button(action: { unlockCar(userId: authManager.userId!) }) {
-                    Text("Unlock Car") // (\(garageManager.usableMiles, specifier: "%.0f") Points)")
-                        .font(.title2)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(garageManager.usableMiles >= 25 ? Color.green : Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                        .disabled(garageManager.usableMiles < 25)
                 }
                 .padding()
             }
@@ -138,17 +186,46 @@ struct GarageView: View {
                         .foregroundColor(.blue)
                     }
                 }
+            } else {
+                // Tutorial button in navigation bar when in grid view
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            showTutorial.toggle()
+                        }
+                    }) {
+                        Image(systemName: "questionmark.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(.blue)
+                    }
+                }
+            }
+        }
+        // Dismiss tutorial when tapping outside
+        .onTapGesture {
+            if showTutorial {
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showTutorial = false
+                }
             }
         }
     }
 
     private func unlockCar(userId: String) {
+        // Check if user has enough points before attempting unlock
+        guard garageManager.usableMiles >= 25 else {
+            print("Not enough points to unlock a car")
+            return
+        }
+        
         if let newCarMessage = garageManager.unlockCar(userId: userId) {
             // Find the newly unlocked car and open its 3D view
             if let lastUnlockedCar = garageManager.unlockedCars.last {
                 let baseCarName = garageManager.getBaseCarName(from: lastUnlockedCar)
                 selectCar(carName: baseCarName)
             }
+        } else {
+            print("Failed to unlock car")
         }
     }
     
@@ -215,6 +292,117 @@ struct GarageView: View {
             } catch {
                 print("Failed to load \(carName).ply: \(error.localizedDescription)")
             }
+        }
+    }
+}
+
+// MARK: - Tutorial Dropdown View
+struct TutorialDropdownView: View {
+    let usablePoints: Double
+    let onDismiss: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("How to Use Garage")
+                    .font(.headline)
+                    .fontWeight(.bold)
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                }
+            }
+            
+            Divider()
+            
+            // Current Points Display
+            HStack {
+                Image(systemName: "star.fill")
+                    .foregroundColor(.yellow)
+                Text("Current Points: \(usablePoints, specifier: "%.0f")")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+            }
+            .padding(.vertical, 4)
+            .padding(.horizontal, 8)
+            .background(Color.yellow.opacity(0.1))
+            .cornerRadius(8)
+            
+            // Tutorial Steps
+            VStack(alignment: .leading, spacing: 10) {
+                TutorialStepView(
+                    stepNumber: "1",
+                    title: "Unlock Cars",
+                    description: "Use points from driving to unlock new cars (25 points each)",
+                    icon: "star.circle.fill",
+                    iconColor: .green
+                )
+                
+                TutorialStepView(
+                    stepNumber: "2",
+                    title: "View & Equip",
+                    description: "Click on any car to view 3D model and equip it if you own it",
+                    icon: "cube.fill",
+                    iconColor: .blue
+                )
+                
+                TutorialStepView(
+                    stepNumber: "3",
+                    title: "Share with Friends",
+                    description: "Equipped car will appear when sharing routes with friends",
+                    icon: "person.2.fill",
+                    iconColor: .purple
+                )
+            }
+            .padding(.top, 8)
+        }
+        .padding(16)
+        .background(Color(.systemBackground))
+        .cornerRadius(12)
+        .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
+        .frame(maxWidth: 280)
+    }
+}
+
+// MARK: - Tutorial Step View
+struct TutorialStepView: View {
+    let stepNumber: String
+    let title: String
+    let description: String
+    let icon: String
+    let iconColor: Color
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // Step number circle
+            ZStack {
+                Circle()
+                    .fill(iconColor)
+                    .frame(width: 24, height: 24)
+                Text(stepNumber)
+                    .font(.caption)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+            }
+            
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: icon)
+                        .foregroundColor(iconColor)
+                        .font(.system(size: 14))
+                    Text(title)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+                
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            
+            Spacer()
         }
     }
 }

@@ -127,7 +127,7 @@ class GarageManager: ObservableObject {
     }
 
     func unlockCar(userId: String) -> String? {
-        let minimum_miles_to_unlock = 1.0
+        let minimum_miles_to_unlock = 25.0
         guard usableMiles >= minimum_miles_to_unlock else { return "Not enough miles to unlock a car!" }
 
         usableMiles -= minimum_miles_to_unlock
