@@ -142,11 +142,11 @@ struct GarageView: View {
                             .cornerRadius(10)
                     }
                     .disabled(garageManager.usableMiles < 25)
-                    
-                    if garageManager.usableMiles < 25 {
-                        // Lock overlay using same style as carousel
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.black.opacity(0.6))
+                    .overlay(
+                        // Lock overlay directly on the button
+                        garageManager.usableMiles < 25 ?
+                        Color.black.opacity(0.6)
+                            .cornerRadius(10)
                             .overlay(
                                 VStack {
                                     Image(systemName: "lock.fill")
@@ -158,8 +158,8 @@ struct GarageView: View {
                                         .foregroundColor(.white)
                                 }
                             )
-                            .allowsHitTesting(false)
-                    }
+                        : nil
+                    )
                 }
                 .padding()
             }
