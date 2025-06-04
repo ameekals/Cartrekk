@@ -98,8 +98,26 @@ class AuthenticationManager: ObservableObject {
     }
     
     func setUsername(_ username: String, completion: @escaping (Bool, String?) -> Void) {
-            guard let userId = userId,
-                let email = Auth.auth().currentUser?.email else { return }
+        guard let userId = userId,
+            let email = Auth.auth().currentUser?.email else {
+            completion(false, "User not authenticated")
+            return
+        }
+        
+        Task {
+            var s3UserID: String = ""
+            
+            // Generate Cognito Identity when creating the username
+            do {
+                s3UserID = try await AWSService.shared.generateNewCognitoIdentity()
+                print("Successfully generated Cognito ID: \(s3UserID)")
+            } catch {
+                print("Failed to generate Cognito ID: \(error)")
+                DispatchQueue.main.async {
+                    completion(false, "Failed to generate user credentials")
+                }
+                return
+            }
             
             // Check if username is already taken
             let db = Firestore.firestore()
@@ -109,7 +127,7 @@ class AuthenticationManager: ObservableObject {
                     return
                 }
                 
-                // If username is available, save it
+                // If username is available, save it along with the Cognito ID
                 db.collection("users").document(userId).setData(
                     [
                     "distance_used" : 0,
@@ -120,7 +138,8 @@ class AuthenticationManager: ObservableObject {
                     "profilePictureURL" : "",
                     "total_distance" : 0,
                     "username": username,
-                    "equiped_car" : ""
+                    "equiped_car" : "",
+                    "cognitoIdentityId": s3UserID  // Add the Cognito ID here
                     ],
                     merge: true) { error in
                     if let error = error {
@@ -145,6 +164,7 @@ class AuthenticationManager: ObservableObject {
                 }
             }
         }
+    }
 }
 
 // MARK: - Login View

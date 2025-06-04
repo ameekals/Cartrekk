@@ -84,6 +84,7 @@ class ExploreViewModel: ObservableObject {
             posts[index].likes += 1
             objectWillChange.send()
         }
+        
     }
 
     @MainActor
@@ -139,6 +140,7 @@ class ExploreViewModel: ObservableObject {
                 continuation.resume()
             }
         }
+        
     }
     
     func checkUserLikeStatus(postId: String, userId: String, completion: @escaping (Bool) -> Void) {

@@ -8,12 +8,172 @@ import Firebase
 import FirebaseFirestore
 import FirebaseCore
 
-
 class FirestoreManager: ObservableObject{
     static let shared = FirestoreManager()
     let db = Firestore.firestore()
     
+    // MARK: - Cognito Integration Functions
     
+    func getCognitoIdentityIdForUser(userId: String) async throws -> String? {
+        let document = try await db.collection("users").document(userId).getDocument()
+        
+        guard let data = document.data() else {
+            return nil
+        }
+        
+        return data["cognitoIdentityId"] as? String
+    }
+    
+    func saveCognitoIdentityId(userId: String, cognitoId: String) async throws {
+        try await db.collection("users").document(userId).updateData([
+            "cognitoIdentityId": cognitoId,
+            "cognitoCreatedAt": FieldValue.serverTimestamp()
+        ])
+    }
+    
+    // MARK: - Enhanced Image Functions
+    
+    func getProfilePictureURL(userId: String) async throws -> String? {
+        let document = try await db.collection("users").document(userId).getDocument()
+        
+        guard let data = document.data(),
+              let profileURL = data["profilePictureURL"] as? String,
+              !profileURL.isEmpty else {
+            return nil
+        }
+        
+        return profileURL
+    }
+
+    func getUserProfileImage(userId: String) async throws -> UIImage? {
+        guard let profileURL = try await getProfilePictureURL(userId: userId) else {
+            return nil
+        }
+        
+        // Use the new AWSService method
+        return try await AWSService.shared.getImageFromS3(imageURL: profileURL)
+    }
+    
+    func updateUserProfilePicture(userId: String, profileImage: UIImage) async throws -> Bool {
+        do {
+            // Upload image using new Cognito-integrated method
+            let profilePictureURL = try await AWSService.shared.uploadImageForFirebaseUser(
+                image: profileImage,
+                firebaseUserId: userId
+            )
+            
+            // Update Firebase with the new URL
+            try await db.collection("users").document(userId).updateData([
+                "profilePictureURL": profilePictureURL
+            ])
+            
+            print("Profile picture successfully updated!")
+            return true
+        } catch {
+            print("Error updating profile picture: \(error)")
+            return false
+        }
+    }
+    
+    func updateUserProfilePicture(userId: String, profilePictureURL: String, completion: @escaping (Bool) -> Void) {
+        let userRef = db.collection("users").document(userId)
+        
+        // Update the profilePictureURL field
+        userRef.updateData([
+            "profilePictureURL": profilePictureURL
+        ]) { error in
+            if let error = error {
+                print("Error updating profile picture: \(error)")
+                completion(false)
+            } else {
+                print("Profile picture successfully updated!")
+                completion(true)
+            }
+        }
+    }
+    
+    // MARK: - Route Image Functions
+    
+    func updateRouteImages(routeId: String, newImage: UIImage, completion: @escaping (Bool) -> Void) {
+        // Upload image using Cognito-integrated method
+        Task {
+            do {
+                let imageURL = try await AWSService.shared.uploadImageToS3(image: newImage)
+                
+                // Update route with new image URL
+                await MainActor.run {
+                    self.updateRouteImages(routeId: routeId, newImageUrl: imageURL) { success in
+                        completion(success)
+                    }
+                }
+            } catch {
+                print("Error uploading route image: \(error)")
+                await MainActor.run {
+                    completion(false)
+                }
+            }
+        }
+    }
+    
+    func updateRouteImages(routeId: String, newImageUrl: String, completion: @escaping (Bool) -> Void) {
+        let routeRef = db.collection("routes").document(routeId)
+        
+        // First get the current document to access existing images
+        routeRef.getDocument { (document, error) in
+            if let document = document, document.exists {
+                // Get current images array or create a new one if it doesn't exist
+                var currentImages = document.data()?["routeImages"] as? [String] ?? []
+                
+                // Add the new image URL to the array
+                if(newImageUrl == "null"){
+                    print("image not found")
+                }else{
+                    currentImages.append(newImageUrl)
+                }
+                
+                // Update only the routeImages field
+                routeRef.updateData([
+                    "routeImages": currentImages
+                ]) { error in
+                    if let error = error {
+                        print("Error updating route images: \(error)")
+                        completion(false)
+                    } else {
+                        print("Route images successfully updated!")
+                        completion(true)
+                    }
+                }
+            } else {
+                print("Document does not exist or error: \(error?.localizedDescription ?? "unknown error")")
+                completion(false)
+            }
+        }
+    }
+    
+    // MARK: - User Management Functions
+    
+    func createUserDocument(userId: String, userData: [String: Any]) async throws {
+        var userDataWithCognito = userData
+        
+        // Initialize Cognito fields
+        userDataWithCognito["cognitoIdentityId"] = nil
+        userDataWithCognito["cognitoCreatedAt"] = nil
+        
+        try await db.collection("users").document(userId).setData(userDataWithCognito)
+    }
+    
+    func ensureUserHasCognitoId(userId: String) async throws -> String {
+        // Check if user already has Cognito ID
+        if let existingCognitoId = try await getCognitoIdentityIdForUser(userId: userId) {
+            return existingCognitoId
+        }
+        
+        // Generate new Cognito ID using AWSService
+        let cognitoId = try await AWSService.shared.getCognitoIdentityForUser(firebaseUserId: userId)
+        return cognitoId
+    }
+    
+    // MARK: - All your existing functions remain the same...
     
     func getRoutesForUser(userId: String, completion: @escaping ([fb_Route]?) -> Void) {
         let routesRef = db.collection("routes")
@@ -33,9 +193,6 @@ class FirestoreManager: ObservableObject{
             // Parse documents into Route models
             let routes: [fb_Route] = documents.compactMap { document in
                 let data = document.data()
-                
-                // First, modify your fb_Route struct to include a new initializer that accepts all these parameters
-                // along with the spotifySongs parameter, and update all calling code to use that
                 
                 // Parse Spotify songs
                 var spotifySongs: [SpotifyTrack]? = nil
@@ -66,7 +223,6 @@ class FirestoreManager: ObservableObject{
                     }
                 }
                 
-                // Use your current fb_Route initializer pattern but with the new spotifySongs parameter
                 return fb_Route(
                     docID: document.documentID,
                     createdAt: (data["createdAt"] as? Timestamp)?.dateValue() ?? Date(),
@@ -79,8 +235,8 @@ class FirestoreManager: ObservableObject{
                     userId: data["userid"] as? String ?? "",
                     description: data["description"] as? String ?? "",
                     name: data["name"] as? String ?? "",
-                    spotifySongs: spotifySongs,  // Add the new parameter here
-                    equipedCar: data[""] as? String ?? ""
+                    spotifySongs: spotifySongs,
+                    equipedCar: data["equippedCar"] as? String ?? ""
                 )
             }
             
@@ -144,29 +300,8 @@ class FirestoreManager: ObservableObject{
         }
     }
     
-    func getProfilePictureURL(userId: String) async throws -> String? {
-        let document = try await db.collection("users").document(userId).getDocument()
-        
-        guard let data = document.data(),
-              let profileURL = data["profilePictureURL"] as? String,
-              !profileURL.isEmpty else {
-            return nil
-        }
-        
-        return profileURL
-    }
-
-    func getUserProfileImage(userId: String) async throws -> UIImage? {
-        guard let profileURL = try await getProfilePictureURL(userId: userId) else {
-            return nil
-        }
-        
-        return try await getImageFromS3(imageURL: profileURL)
-    }
-    
-    
     func fetchTotalDistanceForUser(userId: String, completion: @escaping (Double?) -> Void) {
-        let userRef = db.collection("users").document(userId) // Reference to the user document
+        let userRef = db.collection("users").document(userId)
 
         userRef.getDocument { (document, error) in
             if let error = error {
@@ -181,14 +316,13 @@ class FirestoreManager: ObservableObject{
                 return
             }
 
-            // Extract total_distance from the user's document
             let totalDistance = document.data()?["total_distance"] as? Double ?? 0.0
             completion(totalDistance)
         }
     }
     
     func fetchUsableDistanceForUser(userId: String, completion: @escaping (Double?) -> Void) {
-        let userRef = db.collection("users").document(userId) // Reference to the user document
+        let userRef = db.collection("users").document(userId)
 
         userRef.getDocument { (document, error) in
             if let error = error {
@@ -203,11 +337,13 @@ class FirestoreManager: ObservableObject{
                 return
             }
 
-            // Extract total_distance from the user's document
             let usableDistance = document.data()?["distance_used"] as? Double ?? 0.0
             completion(usableDistance)
         }
     }
+    
+    // MARK: - Continue with all your existing functions...
+    // (I'm including the key ones and you can keep the rest as they are)
     
     func addCarToInventory(userId: String, carName: String, completion: @escaping (Bool, String) -> Void) {
         let userRef = db.collection("users").document(userId)
@@ -276,9 +412,7 @@ class FirestoreManager: ObservableObject{
             completion(equippedCar)
         }
     }
-    
 
-    // 🔹 Function to save route details
     func saveRouteDetails(routeId: String, distance: Double, duration: Double, likes: Int, polyline: String, isPublic: Bool, routeImages: [String]?, userId: String, routeName: String, routeDescription: String, completion: @escaping () -> Void) {
         let routeRef = db.collection("routes").document(routeId)
 
@@ -295,10 +429,8 @@ class FirestoreManager: ObservableObject{
                 "name": routeName,
                 "description": routeDescription,
                 "equippedCar": equippedCar ?? ""
-                // Now the data is available here
             ]
 
-            // Now you can use `data` however you need
             routeRef.setData(data) { error in
                 if let error = error {
                     print("Error saving route: \(error)")
@@ -306,62 +438,6 @@ class FirestoreManager: ObservableObject{
                     print("Route successfully saved!")
                 }
                 completion()
-            }
-            
-        }
-
-        
-    }
-    
-    func updateRouteImages(routeId: String, newImageUrl: String, completion: @escaping (Bool) -> Void) {
-        let routeRef = db.collection("routes").document(routeId)
-        
-        // First get the current document to access existing images
-        routeRef.getDocument { (document, error) in
-            if let document = document, document.exists {
-                // Get current images array or create a new one if it doesn't exist
-                var currentImages = document.data()?["routeImages"] as? [String] ?? []
-                
-                // Add the new image URL to the array
-                if(newImageUrl == "null"){
-                    print("image not found")
-                }else{
-                    currentImages.append(newImageUrl)
-                }
-                
-                
-                // Update only the routeImages field
-                routeRef.updateData([
-                    "routeImages": currentImages
-                ]) { error in
-                    if let error = error {
-                        print("Error updating route images: \(error)")
-                        completion(false)
-                    } else {
-                        print("Route images successfully updated!")
-                        completion(true)
-                    }
-                }
-            } else {
-                print("Document does not exist or error: \(error?.localizedDescription ?? "unknown error")")
-                completion(false)
-            }
-        }
-    }
-    
-    func updateUserProfilePicture(userId: String, profilePictureURL: String, completion: @escaping (Bool) -> Void) {
-        let userRef = db.collection("users").document(userId)
-        
-        // Update the profilePictureURL field
-        userRef.updateData([
-            "profilePictureURL": profilePictureURL
-        ]) { error in
-            if let error = error {
-                print("Error updating profile picture: \(error)")
-                completion(false)
-            } else {
-                print("Profile picture successfully updated!")
-                completion(true)
             }
         }
     }
@@ -507,6 +583,7 @@ class FirestoreManager: ObservableObject{
                 }
         }
     }
+    
     func getCommentsForRoute(routeId: String, completion: @escaping ([Comment]?) -> Void) {
         let commentsRef = db.collection("routes").document(routeId).collection("comments")
         
@@ -570,6 +647,7 @@ class FirestoreManager: ObservableObject{
             }
         }
     }
+    
     func getCarForPost(routeId: String, userId: String, completion: @escaping (String) -> Void) {
         let car = db.collection("routes").document(routeId)
         
@@ -587,8 +665,8 @@ class FirestoreManager: ObservableObject{
                 completion("")
             }
         }
-        
     }
+    
     func handleLike(routeId: String, userId: String, completion: @escaping (Error?) -> Void) {
         let likeRef = db.collection("routes").document(routeId).collection("likes").document(userId)
         let routeRef = db.collection("routes").document(routeId)
@@ -691,22 +769,6 @@ class FirestoreManager: ObservableObject{
             return nil
         }
     }
-    
-
-//     struct fb_Route {
-//         let docID: String
-//         let createdAt: Date
-//         let distance: Double
-//         let duration: Double
-//         let likes: Int
-//         let polyline: String
-//         let isPublic: Bool
-//         let routeImages: [String]?
-//         let userId: String
-//         let description: String
-//         let name: String
-//         let equipedCar: String
-//     }
     
     func searchUsers(query: String, currentUserId: String, completion: @escaping ([User]) -> Void) {
         guard !query.isEmpty else {
@@ -948,6 +1010,7 @@ class FirestoreManager: ObservableObject{
         }
     }
     
+    // MARK: - Data Models
     struct fb_Route {
         let docID: String
         let createdAt: Date
@@ -966,7 +1029,7 @@ class FirestoreManager: ObservableObject{
         init(docID: String, createdAt: Date, distance: Double, duration: Double,
              likes: Int, polyline: String, isPublic: Bool, routeImages: [String],
              userId: String, description: String, name: String,
-             spotifySongs: [SpotifyTrack]? = nil, equipedCar: String) {  // Default to nil for backward compatibility
+             spotifySongs: [SpotifyTrack]? = nil, equipedCar: String) {
             
             self.docID = docID
             self.createdAt = createdAt
@@ -985,19 +1048,19 @@ class FirestoreManager: ObservableObject{
     
         init(id: String, data: [String: Any]) {
             self.docID = id
-            self.userId = data["userId"] as? String ?? ""
+            self.userId = data["userid"] as? String ?? ""
             self.createdAt = (data["createdAt"] as? Timestamp)?.dateValue() ?? Date()
             self.distance = data["distance"] as? Double ?? 0.0
             self.duration = data["duration"] as? Double ?? 0.0
             self.polyline = data["polyline"] as? String ?? ""
-            self.isPublic = data["isPublic"] as? Bool ?? false
+            self.isPublic = data["public"] as? Bool ?? false
             self.name = data["name"] as? String ?? ""
             self.description = data["description"] as? String ?? ""
             self.likes = data["likes"] as? Int ?? 0
             self.routeImages = data["routeImages"] as? [String]
-            self.equipedCar = data["equipedCar"] as? String ?? ""
+            self.equipedCar = data["equippedCar"] as? String ?? ""
             
-            // Add the Spotify songs parsing code here:
+            // Parse Spotify songs
             if let spotifySongsData = data["spotifySongs"] as? [[String: Any]] {
                 var songs: [SpotifyTrack] = []
                 for songData in spotifySongsData {
@@ -1026,8 +1089,4 @@ class FirestoreManager: ObservableObject{
             }
         }
     }
-
-
 }
-
-
