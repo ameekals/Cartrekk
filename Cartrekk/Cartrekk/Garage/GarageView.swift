@@ -15,6 +15,9 @@ struct GarageView: View {
     @State private var carouselScenes: [SCNScene?] = []
     @State private var dragOffset: CGFloat = 0
     @State private var showTutorial: Bool = false
+    @State private var showCaseOpening: Bool = false
+    @State private var caseOpeningResult: String? = nil
+    @State private var showCaseResult: Bool = false
     @EnvironmentObject var authManager: AuthenticationManager
     
     // Grid layout configuration
@@ -23,145 +26,12 @@ struct GarageView: View {
     ]
     
     var body: some View {
-        VStack {
-            if selectedCarIndex != nil {
-                // 3D Carousel View
-                Car3DCarouselView(
-                    currentIndex: $currentCarouselIndex,
-                    scenes: carouselScenes,
-                    allCars: getAllCarsForCarousel(),
-                    unlockedCars: Set(garageManager.getUniqueUnlockedCars()),
-                    onSwipe: { direction in
-                        handleCarouselSwipe(direction: direction)
-                    }
-                )
-                .frame(height: 500)
-                
-                // Selected car info
-                let allCars = getAllCarsForCarousel()
-                let currentCarName = allCars[currentCarouselIndex]
-                let isUnlocked = garageManager.getUniqueUnlockedCars().contains(currentCarName)
-                
-                if isUnlocked {
-                    // Equip/Unequip Button
-                    Button(action: {
-                        if garageManager.equippedCar == currentCarName {
-                            garageManager.equipCar(userId: authManager.userId ?? "", carName: "")
-                        } else {
-                            garageManager.equipCar(userId: authManager.userId ?? "", carName: currentCarName)
-                        }
-                    }) {
-                        Text(garageManager.equippedCar == currentCarName ? "Unequip Car" : "Equip Car")
-                            .font(.title2)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(garageManager.equippedCar == currentCarName ? Color.red : Color.blue)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                    .padding(.horizontal)
-                } else {
-                    // Locked car indicator
-                    VStack {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 30))
-                            .foregroundColor(.gray)
-                        Text("Car Locked")
-                            .font(.headline)
-                            .foregroundColor(.gray)
-                        Text("Unlock this car to equip it")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                    .padding()
-                }
-                
-            } else {
-                // Car Grid View
-                ZStack(alignment: .topTrailing) {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 20) {
-                            ForEach(garageManager.getAllCars(), id: \.self) { carName in
-                                let isUnlocked = garageManager.getUniqueUnlockedCars().contains(carName)
-                                let isEquipped = garageManager.equippedCar == carName
-                                let rarity = garageManager.getCarRarity(for: carName)
-                                let duplicateCount = garageManager.getDuplicateCount(for: carName)
-                                
-                                CarBoxView(
-                                    carName: carName,
-                                    isUnlocked: isUnlocked,
-                                    isEquipped: isEquipped,
-                                    rarity: rarity,
-                                    duplicateCount: duplicateCount,
-                                    action: {
-                                        selectCar(carName: carName)
-                                    }
-                                )
-                            }
-                        }
-                        .padding()
-                        .padding(.bottom, 80) // Add bottom padding to prevent overlap with button
-                    }
-                    
-                    // Tutorial Dropdown positioned at button location
-                    if showTutorial {
-                        VStack {
-                            HStack {
-                                Spacer()
-                                TutorialDropdownView(
-                                    usablePoints: garageManager.usableMiles,
-                                    onDismiss: {
-                                        withAnimation(.easeInOut(duration: 0.3)) {
-                                            showTutorial = false
-                                        }
-                                    }
-                                )
-                            }
-                            .padding(.top, 8) // Small offset from navigation bar
-                            .padding(.trailing, 16) // Align with button position
-                            Spacer()
-                        }
-                        .transition(.asymmetric(
-                            insertion: .opacity.combined(with: .scale(scale: 0.8, anchor: .topTrailing)),
-                            removal: .opacity.combined(with: .scale(scale: 0.8, anchor: .topTrailing))
-                        ))
-                    }
-                }
-                
-                Spacer() // Push button to bottom
-                
-                // Unlock Button - fixed at bottom
-                ZStack {
-                    Button(action: { unlockCar(userId: authManager.userId!) }) {
-                        Text("Unlock Car")
-                            .font(.title2)
-                            .padding()
-                            .frame(maxWidth: .infinity)
-                            .background(garageManager.usableMiles >= 25 ? Color.green : Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                    }
-                    .disabled(garageManager.usableMiles < 25)
-                    .overlay(
-                        // Lock overlay directly on the button
-                        garageManager.usableMiles < 25 ?
-                        Color.black.opacity(0.6)
-                            .cornerRadius(10)
-                            .overlay(
-                                VStack {
-                                    Image(systemName: "lock.fill")
-                                        .font(.system(size: 30))
-                                        .foregroundColor(.white)
-                                    Text("Locked")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                }
-                            )
-                        : nil
-                    )
-                }
-                .padding()
+        ZStack {
+            mainContentView
+            
+            // Case Opening Animation Overlay
+            if showCaseOpening {
+                caseOpeningView
             }
         }
         .onAppear {
@@ -170,38 +40,29 @@ struct GarageView: View {
             }
         }
         .navigationTitle("Garage")
-        .navigationBarBackButtonHidden(selectedCarIndex != nil)
+        .navigationBarBackButtonHidden(selectedCarIndex != nil || showCaseOpening)
         .toolbar {
+            // Back button for 3D carousel view
             if selectedCarIndex != nil {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: {
-                        selectedCarIndex = nil
-                        carouselScenes = []
-                        currentCarouselIndex = 0
-                    }) {
-                        HStack {
-                            Image(systemName: "chevron.left")
-                            Text("Back")
-                        }
-                        .foregroundColor(.blue)
-                    }
+                    backToGridButton
                 }
-            } else {
-                // Tutorial button in navigation bar when in grid view
+            }
+            
+            // Back button for case opening (when result is shown)
+            if showCaseOpening && showCaseResult {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    backFromCaseOpeningButton
+                }
+            }
+            
+            // Tutorial button for grid view
+            if !showCaseOpening && selectedCarIndex == nil {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        withAnimation(.easeInOut(duration: 0.3)) {
-                            showTutorial.toggle()
-                        }
-                    }) {
-                        Image(systemName: "questionmark.circle.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(.blue)
-                    }
+                    tutorialButton
                 }
             }
         }
-        // Dismiss tutorial when tapping outside
         .onTapGesture {
             if showTutorial {
                 withAnimation(.easeInOut(duration: 0.3)) {
@@ -209,6 +70,306 @@ struct GarageView: View {
                 }
             }
         }
+    }
+    
+    // MARK: - Main Content View
+    @ViewBuilder
+    private var mainContentView: some View {
+        VStack {
+            if selectedCarIndex != nil {
+                carouselContentView
+            } else {
+                gridContentView
+            }
+        }
+    }
+    
+    // MARK: - Carousel Content View
+    @ViewBuilder
+    private var carouselContentView: some View {
+        // 3D Carousel View
+        Car3DCarouselView(
+            currentIndex: $currentCarouselIndex,
+            scenes: carouselScenes,
+            allCars: getAllCarsForCarousel(),
+            unlockedCars: Set(garageManager.getUniqueUnlockedCars()),
+            onSwipe: { direction in
+                handleCarouselSwipe(direction: direction)
+            }
+        )
+        .frame(height: 500)
+        
+        // Selected car info
+        selectedCarInfoView
+    }
+    
+    // MARK: - Selected Car Info View
+    @ViewBuilder
+    private var selectedCarInfoView: some View {
+        let allCars = getAllCarsForCarousel()
+        let currentCarName = allCars[currentCarouselIndex]
+        let isUnlocked = garageManager.getUniqueUnlockedCars().contains(currentCarName)
+        
+        if isUnlocked {
+            equipUnequipButton(for: currentCarName)
+        } else {
+            lockedCarIndicator
+        }
+    }
+    
+    // MARK: - Equip/Unequip Button
+    @ViewBuilder
+    private func equipUnequipButton(for carName: String) -> some View {
+        Button(action: {
+            if garageManager.equippedCar == carName {
+                garageManager.equipCar(userId: authManager.userId ?? "", carName: "")
+            } else {
+                garageManager.equipCar(userId: authManager.userId ?? "", carName: carName)
+            }
+        }) {
+            Text(garageManager.equippedCar == carName ? "Unequip Car" : "Equip Car")
+                .font(.title2)
+                .padding()
+                .frame(maxWidth: .infinity)
+                .background(garageManager.equippedCar == carName ? Color.red : Color.blue)
+                .foregroundColor(.white)
+                .cornerRadius(10)
+        }
+        .padding(.horizontal)
+    }
+    
+    // MARK: - Locked Car Indicator
+    @ViewBuilder
+    private var lockedCarIndicator: some View {
+        VStack {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 30))
+                .foregroundColor(.gray)
+            Text("Car Locked")
+                .font(.headline)
+                .foregroundColor(.gray)
+            Text("Unlock this car to equip it")
+                .font(.caption)
+                .foregroundColor(.gray)
+        }
+        .padding()
+    }
+    
+    // MARK: - Grid Content View
+    @ViewBuilder
+    private var gridContentView: some View {
+        ZStack(alignment: .topTrailing) {
+            carGridScrollView
+            tutorialDropdownView
+        }
+        
+        Spacer() // Push button to bottom
+        unlockButton
+    }
+    
+    // MARK: - Car Grid Scroll View
+    @ViewBuilder
+    private var carGridScrollView: some View {
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 20) {
+                ForEach(garageManager.getAllCars(), id: \.self) { carName in
+                    let isUnlocked = garageManager.getUniqueUnlockedCars().contains(carName)
+                    let isEquipped = garageManager.equippedCar == carName
+                    let rarity = garageManager.getCarRarity(for: carName)
+                    let duplicateCount = garageManager.getDuplicateCount(for: carName)
+                    
+                    CarBoxView(
+                        carName: carName,
+                        isUnlocked: isUnlocked,
+                        isEquipped: isEquipped,
+                        rarity: rarity,
+                        duplicateCount: duplicateCount,
+                        action: {
+                            selectCar(carName: carName)
+                        }
+                    )
+                }
+            }
+            .padding()
+            .padding(.bottom, 80) // Add bottom padding to prevent overlap with button
+        }
+    }
+    
+    // MARK: - Tutorial Dropdown View
+    @ViewBuilder
+    private var tutorialDropdownView: some View {
+        if showTutorial {
+            VStack {
+                HStack {
+                    Spacer()
+                    TutorialDropdownView(
+                        usablePoints: garageManager.usableMiles,
+                        onDismiss: {
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                showTutorial = false
+                            }
+                        }
+                    )
+                }
+                .padding(.top, 8) // Small offset from navigation bar
+                .padding(.trailing, 16) // Align with button position
+                Spacer()
+            }
+            .transition(.asymmetric(
+                insertion: .opacity.combined(with: .scale(scale: 0.8, anchor: .topTrailing)),
+                removal: .opacity.combined(with: .scale(scale: 0.8, anchor: .topTrailing))
+            ))
+        }
+    }
+    
+    // MARK: - Unlock Button
+    @ViewBuilder
+    private var unlockButton: some View {
+        ZStack {
+            Button(action: { unlockCarWithAnimation(userId: authManager.userId!) }) {
+                Text("Unlock Car")
+                    .font(.title2)
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(garageManager.usableMiles >= 25 ? Color.green : Color.gray)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+            .disabled(garageManager.usableMiles < 25)
+            .overlay(
+                // Lock overlay directly on the button
+                garageManager.usableMiles < 25 ?
+                lockOverlay : nil
+            )
+        }
+        .padding()
+    }
+    
+    // MARK: - Lock Overlay
+    @ViewBuilder
+    private var lockOverlay: some View {
+        Color.black.opacity(0.6)
+            .cornerRadius(10)
+            .overlay(
+                VStack {
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(.white)
+                    Text("Locked")
+                        .font(.caption)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                }
+            )
+    }
+    
+    // MARK: - Case Opening View
+    @ViewBuilder
+    private var caseOpeningView: some View {
+        CaseOpeningView(
+            allCars: garageManager.getAllCars(),
+            resultCar: caseOpeningResult ?? "redpink_truck",
+            onComplete: {
+                showCaseOpening = false
+                showCaseResult = false
+                // Navigate to the unlocked car's 3D view
+                if let resultCar = caseOpeningResult {
+                    let baseCarName = garageManager.getBaseCarName(from: resultCar)
+                    selectCar(carName: baseCarName)
+                }
+                caseOpeningResult = nil
+            },
+            onResultShown: {
+                showCaseResult = true
+            }
+        )
+    }
+    
+    // MARK: - Toolbar Buttons
+    @ViewBuilder
+    private var backToGridButton: some View {
+        Button(action: {
+            selectedCarIndex = nil
+            carouselScenes = []
+            currentCarouselIndex = 0
+        }) {
+            HStack {
+                Image(systemName: "chevron.left")
+                Text("Back")
+            }
+            .foregroundColor(.blue)
+        }
+    }
+    
+    @ViewBuilder
+    private var backFromCaseOpeningButton: some View {
+        Button(action: {
+            showCaseOpening = false
+            caseOpeningResult = nil
+            showCaseResult = false
+        }) {
+            HStack {
+                Image(systemName: "chevron.left")
+                Text("Back")
+            }
+            .foregroundColor(.blue)
+        }
+    }
+    
+    @ViewBuilder
+    private var tutorialButton: some View {
+        Button(action: {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                showTutorial.toggle()
+            }
+        }) {
+            Image(systemName: "questionmark.circle.fill")
+                .font(.system(size: 20))
+                .foregroundColor(.blue)
+        }
+    }
+
+    private func unlockCarWithAnimation(userId: String) {
+        // Check if user has enough points before attempting unlock
+        guard garageManager.usableMiles >= 25 else {
+            print("Not enough points to unlock a car")
+            return
+        }
+        
+        // Pre-determine the result using existing logic but don't apply it yet
+        let rarity = rollForRarityPreview()
+        guard let availableCars = getAllCarsByRarity()[rarity],
+              let selectedBaseCar = availableCars.randomElement() else {
+            print("No cars available for rarity: \(rarity)")
+            return
+        }
+        
+        // Start the case opening animation
+        caseOpeningResult = selectedBaseCar
+        showCaseOpening = true
+        
+        // Actually unlock the car (this will be processed during animation)
+        if let newCarMessage = garageManager.unlockCar(userId: userId) {
+            print(newCarMessage)
+        }
+    }
+    
+    private func rollForRarityPreview() -> CarRarity {
+        let randomNumber = Int.random(in: 1...100)
+        switch randomNumber {
+        case 1...60: return .common
+        case 61...89: return .rare
+        case 90...100: return .legendary
+        default: return .common
+        }
+    }
+    
+    private func getAllCarsByRarity() -> [CarRarity: [String]] {
+        return [
+            .common: ["redpink_truck"],
+            .rare: ["yellow_car_stripe", "ef"],
+            .legendary: ["blue_car_hat"]
+        ]
     }
 
     private func unlockCar(userId: String) {
@@ -356,12 +517,80 @@ struct TutorialDropdownView: View {
                 )
             }
             .padding(.top, 8)
+            
+            Divider()
+                .padding(.vertical, 8)
+            
+            // Unlock Odds Section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Unlock Odds")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    RarityOddsView(
+                        rarity: .common,
+                        percentage: "60%",
+                        description: "Most common cars"
+                    )
+                    
+                    RarityOddsView(
+                        rarity: .rare,
+                        percentage: "30%",
+                        description: "Special cars"
+                    )
+                    
+                    RarityOddsView(
+                        rarity: .legendary,
+                        percentage: "10%",
+                        description: "Ultra rare cars"
+                    )
+                }
+            }
         }
         .padding(16)
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
         .frame(maxWidth: 280)
+    }
+}
+
+// MARK: - Rarity Odds View
+struct RarityOddsView: View {
+    let rarity: CarRarity
+    let percentage: String
+    let description: String
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            // Rarity color indicator
+            Circle()
+                .fill(rarity.color)
+                .frame(width: 12, height: 12)
+            
+            // Rarity name
+            Text(rarity.name)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+                .frame(width: 60, alignment: .leading)
+            
+            // Percentage
+            Text(percentage)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(rarity.color)
+                .frame(width: 35, alignment: .leading)
+            
+            // Description
+            Text(description)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
     }
 }
 
@@ -617,6 +846,235 @@ struct CarouselItemView: View {
             }
         }
         .cornerRadius(10)
+    }
+}
+
+// MARK: - Case Opening Animation View
+struct CaseOpeningView: View {
+    let allCars: [String]
+    let resultCar: String
+    let onComplete: () -> Void
+    let onResultShown: () -> Void
+    
+    @State private var scrollOffset: CGFloat = 0
+    @State private var animationPhase: CaseOpeningPhase = .initial
+    @State private var showResult: Bool = false
+    
+    private let itemWidth: CGFloat = 120
+    private let itemSpacing: CGFloat = 20
+    private let totalItemWidth: CGFloat = 140 // itemWidth + itemSpacing
+    
+    enum CaseOpeningPhase {
+        case initial, spinning, slowing, stopped, showingResult
+    }
+    
+    var body: some View {
+        ZStack {
+            // Dark background overlay
+            Color.black.opacity(0.9)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 30) {
+                Text("Unlocking Car...")
+                    .font(.title)
+                    .fontWeight(.bold)
+                    .foregroundColor(.white)
+                
+                // Case opening container
+                ZStack {
+                    // Background for the case
+                    RoundedRectangle(cornerRadius: 15)
+                        .fill(Color(.systemGray6))
+                        .frame(height: 200)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 15)
+                                .stroke(Color.yellow, lineWidth: 3)
+                        )
+                    
+                    // Selection indicator (fixed in center)
+                    VStack {
+                        Triangle()
+                            .fill(Color.red)
+                            .frame(width: 20, height: 15)
+                        Rectangle()
+                            .fill(Color.red)
+                            .frame(width: 3, height: 170)
+                        Triangle()
+                            .fill(Color.red)
+                            .frame(width: 20, height: 15)
+                            .rotationEffect(.degrees(180))
+                    }
+                    .zIndex(2)
+                    
+                    // Scrolling cars
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: itemSpacing) {
+                            // Create multiple sets of cars for smooth scrolling
+                            ForEach(0..<10, id: \.self) { setIndex in
+                                ForEach(allCars, id: \.self) { carName in
+                                    CaseItemView(
+                                        carName: carName,
+                                        rarity: getCarRarity(for: carName),
+                                        isResult: carName == resultCar && setIndex == 5 // Result will be in the middle set
+                                    )
+                                    .frame(width: itemWidth)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, UIScreen.main.bounds.width / 2 - itemWidth / 2)
+                        .padding(.vertical, 20) // Add vertical padding for glow effects
+                        .offset(x: scrollOffset)
+                    }
+                    .disabled(true)
+                    .clipShape(Rectangle()) // Use Rectangle instead of default clipping
+                    .clipped()
+                }
+                .padding(.horizontal, 20)
+                
+                if showResult {
+                    // Result display
+                    VStack(spacing: 15) {
+                        Text("Congratulations!")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                            .foregroundColor(.yellow)
+                        
+                        Text("You unlocked a \(getCarRarity(for: resultCar).name) car!")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        Button(action: onComplete) {
+                            Text("View Car")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 30)
+                                .padding(.vertical, 12)
+                                .background(Color.yellow)
+                                .cornerRadius(25)
+                        }
+                        .padding(.top, 10)
+                    }
+                    .padding()
+                    .background(
+                        RoundedRectangle(cornerRadius: 15)
+                            .fill(Color(.systemGray5).opacity(0.9))
+                    )
+                    .padding(.horizontal, 40)
+                    .transition(.scale.combined(with: .opacity))
+                }
+            }
+        }
+        .onAppear {
+            startAnimation()
+        }
+    }
+    
+    private func getCarRarity(for carName: String) -> CarRarity {
+        let carsByRarity: [CarRarity: [String]] = [
+            .common: ["redpink_truck"],
+            .rare: ["yellow_car_stripe", "ef"],
+            .legendary: ["blue_car_hat"]
+        ]
+        
+        for (rarity, cars) in carsByRarity {
+            if cars.contains(carName) {
+                return rarity
+            }
+        }
+        return .common
+    }
+    
+    private func startAnimation() {
+        // Calculate the position where the result car should stop in the center
+        let resultPosition = calculateResultPosition()
+        
+        // Create a smooth deceleration animation using a custom timing curve
+        // This simulates realistic physics where the spinning gradually slows down
+        let totalDuration: Double = 4.0
+        
+        withAnimation(.timingCurve(0.25, 0.1, 0.25, 1.0, duration: totalDuration)) {
+            scrollOffset = -resultPosition
+        }
+        
+        // Show result after animation completes
+        DispatchQueue.main.asyncAfter(deadline: .now() + totalDuration + 0.2) {
+            animationPhase = .showingResult
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                showResult = true
+            }
+            // Notify parent that result is now showing
+            onResultShown()
+        }
+    }
+    
+    private func calculateResultPosition() -> CGFloat {
+        // Find the position of the result car in the middle set (set index 5)
+        let setIndex = 5
+        let carIndex = allCars.firstIndex(of: resultCar) ?? 0
+        let totalCarsBeforeResult = (setIndex * allCars.count) + carIndex
+        return CGFloat(totalCarsBeforeResult) * totalItemWidth
+    }
+}
+
+// MARK: - Case Item View
+struct CaseItemView: View {
+    let carName: String
+    let rarity: CarRarity
+    let isResult: Bool
+    
+    var body: some View {
+        VStack(spacing: 8) {
+            ZStack {
+                // Background with rarity color
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(rarity.color.opacity(0.3))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(rarity.color, lineWidth: isResult ? 3 : 2)
+                    )
+                
+                // Car image
+                Image("\(carName)2d")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 100, height: 75)
+                
+                // Glow effect for result
+                if isResult {
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.yellow, lineWidth: 2)
+                        .shadow(color: .yellow, radius: 10)
+                        .allowsHitTesting(false)
+                }
+            }
+            .frame(height: 120)
+            
+            // Rarity indicator
+            Text(rarity.name)
+                .font(.caption2)
+                .fontWeight(.bold)
+                .foregroundColor(rarity == .common ? .black : .white)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 2)
+                .background(rarity.color.opacity(0.9))
+                .cornerRadius(8)
+        }
+        .scaleEffect(isResult ? 1.1 : 1.0)
+        .padding(.vertical, isResult ? 10 : 0) // Extra padding for result item
+        .animation(.easeInOut(duration: 0.3), value: isResult)
+    }
+}
+
+// MARK: - Triangle Shape for Selector
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.midX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.minY))
+        return path
     }
 }
 
