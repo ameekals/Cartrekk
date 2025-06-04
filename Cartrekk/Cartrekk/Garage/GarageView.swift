@@ -517,12 +517,80 @@ struct TutorialDropdownView: View {
                 )
             }
             .padding(.top, 8)
+            
+            Divider()
+                .padding(.vertical, 8)
+            
+            // Unlock Odds Section
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Unlock Odds")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    RarityOddsView(
+                        rarity: .common,
+                        percentage: "60%",
+                        description: "Most common cars"
+                    )
+                    
+                    RarityOddsView(
+                        rarity: .rare,
+                        percentage: "30%",
+                        description: "Special cars"
+                    )
+                    
+                    RarityOddsView(
+                        rarity: .legendary,
+                        percentage: "10%",
+                        description: "Ultra rare cars"
+                    )
+                }
+            }
         }
         .padding(16)
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: Color.black.opacity(0.1), radius: 8, x: 0, y: 4)
         .frame(maxWidth: 280)
+    }
+}
+
+// MARK: - Rarity Odds View
+struct RarityOddsView: View {
+    let rarity: CarRarity
+    let percentage: String
+    let description: String
+    
+    var body: some View {
+        HStack(spacing: 8) {
+            // Rarity color indicator
+            Circle()
+                .fill(rarity.color)
+                .frame(width: 12, height: 12)
+            
+            // Rarity name
+            Text(rarity.name)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.primary)
+                .frame(width: 60, alignment: .leading)
+            
+            // Percentage
+            Text(percentage)
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(rarity.color)
+                .frame(width: 35, alignment: .leading)
+            
+            // Description
+            Text(description)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            
+            Spacer()
+        }
     }
 }
 
@@ -854,9 +922,11 @@ struct CaseOpeningView: View {
                             }
                         }
                         .padding(.horizontal, UIScreen.main.bounds.width / 2 - itemWidth / 2)
+                        .padding(.vertical, 20) // Add vertical padding for glow effects
                         .offset(x: scrollOffset)
                     }
                     .disabled(true)
+                    .clipShape(Rectangle()) // Use Rectangle instead of default clipping
                     .clipped()
                 }
                 .padding(.horizontal, 20)
@@ -968,16 +1038,17 @@ struct CaseItemView: View {
                 Image("\(carName)2d")
                     .resizable()
                     .scaledToFit()
-                    .frame(width: 80, height: 60)
+                    .frame(width: 100, height: 75)
                 
                 // Glow effect for result
                 if isResult {
                     RoundedRectangle(cornerRadius: 10)
                         .stroke(Color.yellow, lineWidth: 2)
                         .shadow(color: .yellow, radius: 10)
+                        .allowsHitTesting(false)
                 }
             }
-            .frame(height: 100)
+            .frame(height: 120)
             
             // Rarity indicator
             Text(rarity.name)
@@ -990,6 +1061,8 @@ struct CaseItemView: View {
                 .cornerRadius(8)
         }
         .scaleEffect(isResult ? 1.1 : 1.0)
+        .padding(.vertical, isResult ? 10 : 0) // Extra padding for result item
+        .animation(.easeInOut(duration: 0.3), value: isResult)
     }
 }
 
