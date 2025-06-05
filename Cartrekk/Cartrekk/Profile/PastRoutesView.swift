@@ -620,10 +620,7 @@ struct PastRouteDetailView: View {
         Task {
             do {
                 // Upload image to S3 or your storage service
-                let imageURL = try await uploadImageToS3(
-                    image: image,
-                    bucketName: "cartrekk-images"
-                )
+                let imageURL = try await AWSService.shared.uploadImageToS3(image: image)
                 
                 // Update local state immediately for responsive UI
                 DispatchQueue.main.async {

@@ -510,41 +510,41 @@ class FirestoreManager: ObservableObject{
         
     }
     
-    func updateRouteImages(routeId: String, newImageUrl: String, completion: @escaping (Bool) -> Void) {
-        let routeRef = db.collection("routes").document(routeId)
-        
-        // First get the current document to access existing images
-        routeRef.getDocument { (document, error) in
-            if let document = document, document.exists {
-                // Get current images array or create a new one if it doesn't exist
-                var currentImages = document.data()?["routeImages"] as? [String] ?? []
-                
-                // Add the new image URL to the array
-                if(newImageUrl == "null"){
-                    print("image not found")
-                }else{
-                    currentImages.append(newImageUrl)
-                }
-                
-                
-                // Update only the routeImages field
-                routeRef.updateData([
-                    "routeImages": currentImages
-                ]) { error in
-                    if let error = error {
-                        print("Error updating route images: \(error)")
-                        completion(false)
-                    } else {
-                        print("Route images successfully updated!")
-                        completion(true)
-                    }
-                }
-            } else {
-                print("Document does not exist or error: \(error?.localizedDescription ?? "unknown error")")
-                completion(false)
-            }
-        }
-    }
+//    func updateRouteImages(routeId: String, newImageUrl: String, completion: @escaping (Bool) -> Void) {
+//        let routeRef = db.collection("routes").document(routeId)
+//        
+//        // First get the current document to access existing images
+//        routeRef.getDocument { (document, error) in
+//            if let document = document, document.exists {
+//                // Get current images array or create a new one if it doesn't exist
+//                var currentImages = document.data()?["routeImages"] as? [String] ?? []
+//                
+//                // Add the new image URL to the array
+//                if(newImageUrl == "null"){
+//                    print("image not found")
+//                }else{
+//                    currentImages.append(newImageUrl)
+//                }
+//                
+//                
+//                // Update only the routeImages field
+//                routeRef.updateData([
+//                    "routeImages": currentImages
+//                ]) { error in
+//                    if let error = error {
+//                        print("Error updating route images: \(error)")
+//                        completion(false)
+//                    } else {
+//                        print("Route images successfully updated!")
+//                        completion(true)
+//                    }
+//                }
+//            } else {
+//                print("Document does not exist or error: \(error?.localizedDescription ?? "unknown error")")
+//                completion(false)
+//            }
+//        }
+//    }
     
     func removeRouteImage(routeId: String, imageUrlToRemove: String, completion: @escaping (Bool) -> Void) {
         let routeRef = db.collection("routes").document(routeId)
@@ -577,23 +577,23 @@ class FirestoreManager: ObservableObject{
         }
     }
     
-    func updateUserProfilePicture(userId: String, profilePictureURL: String, completion: @escaping (Bool) -> Void) {
-        let userRef = db.collection("users").document(userId)
-        
-        // Update the profilePictureURL field
-        userRef.updateData([
-            "profilePictureURL": profilePictureURL
-        ]) { error in
-            if let error = error {
-                print("Error updating profile picture: \(error)")
-                completion(false)
-            } else {
-                print("Profile picture successfully updated!")
-                completion(true)
-            }
-
-        }
-    }
+//    func updateUserProfilePicture(userId: String, profilePictureURL: String, completion: @escaping (Bool) -> Void) {
+//        let userRef = db.collection("users").document(userId)
+//        
+//        // Update the profilePictureURL field
+//        userRef.updateData([
+//            "profilePictureURL": profilePictureURL
+//        ]) { error in
+//            if let error = error {
+//                print("Error updating profile picture: \(error)")
+//                completion(false)
+//            } else {
+//                print("Profile picture successfully updated!")
+//                completion(true)
+//            }
+//
+//        }
+//    }
     
     func deleteRoute(routeId: String, completion: @escaping (Bool) -> Void) {
         let routeRef = db.collection("routes").document(routeId)

@@ -483,10 +483,7 @@ struct TrackingOverlayView: View {
         
         Task {
             do {
-                let imageURL = try await uploadImageToS3(
-                    image: image,
-                    bucketName: "cartrekk-images"
-                )
+                let imageURL = try await AWSService.shared.uploadImageToS3(image: image)
                 
                 DispatchQueue.main.async {
                     self.locationService.addImageToRoute(routeID: routeId, imageURL: imageURL)
