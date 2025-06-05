@@ -120,11 +120,11 @@ struct ProfileView: View {
                         
                         Task {
                             do {
-                                // 1. Upload to S3
-                                let imageURL = try await uploadImageToS3(
-                                    image: newImage,
-                                    bucketName: "cartrekk-images"
-                                )
+                                
+                                
+                                
+                               
+                                let imageURL = try await AWSService.shared.uploadImageToS3(image: newImage)
                                 
                                 // 2. Update Firestore
                                 if imageURL != "NULL" {

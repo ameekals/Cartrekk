@@ -22,6 +22,7 @@ struct ExploreView: View {
                             .foregroundColor(.gray)
                         Button("Find Friends") {
                             showFriendsSheet = true
+                            
                         }
                         .padding()
                         .background(Color.blue)
