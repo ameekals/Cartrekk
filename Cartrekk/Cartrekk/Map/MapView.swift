@@ -388,7 +388,6 @@ struct MapView: View {
 //                    bucketName: "cartrekk-images"
 //                )
                 
-                try await AWSService.shared.generateNewCognitoIdentity()
                 
                 
                 
