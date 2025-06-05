@@ -359,24 +359,89 @@ class FirestoreManager: ObservableObject{
         }
     }
     
-    func fetchUserInventory(userId: String, completion: @escaping ([String]) -> Void) {
+    func addOrUpdateCarInInventory(userId: String, carName: String, newCount: Int, completion: @escaping (Bool, String) -> Void) {
         let userRef = db.collection("users").document(userId)
-
+        
+        // First get the current inventory
         userRef.getDocument { (document, error) in
             if let error = error {
-                print("Error fetching inventory: \(error)")
-                completion([])
+                completion(false, "Error fetching inventory: \(error.localizedDescription)")
                 return
             }
-
+            
             guard let document = document, document.exists else {
-                print("User document not found for userId: \(userId)")
+                // Document doesn't exist, create it with the new car
+                userRef.setData([
+                    "inventory": ["\(carName)#\(newCount)"]
+                ]) { error in
+                    if let error = error {
+                        completion(false, "Error creating inventory: \(error.localizedDescription)")
+                    } else {
+                        completion(true, "Successfully added \(carName) to inventory!")
+                    }
+                }
+                return
+            }
+            
+            var inventory = document.data()?["inventory"] as? [String] ?? []
+            
+            // Find if this car already exists (with any count)
+            if let existingIndex = inventory.firstIndex(where: { $0.hasPrefix("\(carName)#") }) {
+                // Update the existing entry with new count
+                inventory[existingIndex] = "\(carName)#\(newCount)"
+            } else {
+                // Add new car entry
+                inventory.append("\(carName)#\(newCount)")
+            }
+            
+            // Update the document
+            userRef.updateData([
+                "inventory": inventory
+            ]) { error in
+                if let error = error {
+                    completion(false, "Error updating car count: \(error.localizedDescription)")
+                } else {
+                    completion(true, "Successfully updated \(carName) count to \(newCount)!")
+                }
+            }
+        }
+    }
+    
+    func fetchUserInventory(userId: String, completion: @escaping ([String]) -> Void) {
+        let userRef = db.collection("users").document(userId)
+        
+        userRef.getDocument { (document, error) in
+            if let error = error {
+                print("Error fetching user inventory: \(error.localizedDescription)")
                 completion([])
                 return
             }
-
-            let inventory = document.data()?["inventory"] as? [String] ?? []
-            completion(inventory)
+            
+            guard let document = document, document.exists,
+                  let data = document.data(),
+                  let inventory = data["inventory"] as? [String] else {
+                completion([])
+                return
+            }
+            
+            // Convert Firestore format back to local format
+            var localInventory: [String] = []
+            
+            for item in inventory {
+                if let delimiterIndex = item.firstIndex(of: "#"),
+                   let countString = item[item.index(after: delimiterIndex)...].components(separatedBy: CharacterSet.decimalDigits.inverted).first,
+                   let count = Int(countString) {
+                    
+                    let carName = String(item[..<delimiterIndex])
+                    
+                    // Create entries for each copy
+                    for i in 1...count {
+                        localInventory.append("\(carName)#\(i)")
+                    }
+                }
+            }
+            
+            completion(localInventory)
         }
     }
     
