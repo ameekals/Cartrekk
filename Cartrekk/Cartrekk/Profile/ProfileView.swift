@@ -52,7 +52,7 @@ struct ProfileView: View {
                             Text("Friends")
                                 .font(.headline)
                         }
-                        .foregroundColor(.white)
+                        .foregroundColor(.black)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(Color.blue.opacity(0.8))
@@ -69,14 +69,14 @@ struct ProfileView: View {
                             .scaledToFill()
                             .frame(width: 100, height: 100)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                            .overlay(Circle().stroke(Color.black, lineWidth: 2))
                     } else if let profileImage = profileImage {
                         Image(uiImage: profileImage)
                             .resizable()
                             .scaledToFill()
                             .frame(width: 100, height: 100)
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                            .overlay(Circle().stroke(Color.black, lineWidth: 2))
                     } else {
                         Image(systemName: "person.crop.circle.fill")
                             .resizable()
@@ -90,7 +90,7 @@ struct ProfileView: View {
                         HStack {
                             Spacer()
                             Image(systemName: "camera.fill")
-                                .foregroundColor(.white)
+                                .foregroundColor(.black)
                                 .padding(8)
                                 .background(Color.blue)
                                 .clipShape(Circle())
@@ -100,7 +100,7 @@ struct ProfileView: View {
                     
                     if isUploadingImage {
                         ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                            .progressViewStyle(CircularProgressViewStyle(tint: .black))
                             .scaleEffect(1.5)
                             .frame(width: 100, height: 100)
                             .background(Color.black.opacity(0.5))
@@ -164,7 +164,7 @@ struct ProfileView: View {
                 Text(authManager.username ?? "Not found")
                     .font(.title)
                     .bold()
-                    .foregroundColor(.white)
+                    .foregroundColor(.black)
                     .padding(.top, 10)
 
                 VStack(spacing: 15) {
@@ -218,14 +218,14 @@ struct ProfileView: View {
                                     if !viewModel.spotifyUsername.isEmpty {
                                         Text(viewModel.spotifyUsername)
                                             .font(.caption)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(.black)
                                     }
                                 }
                             } else {
                                 Text("Connect Spotify")
                                     .font(.title3)
                                     .bold()
-                                    .foregroundColor(.white)
+                                    .foregroundColor(.black)
                             }
                             
                             Spacer()
@@ -276,7 +276,7 @@ struct ProfileView: View {
                    .environmentObject(authManager)
            }
             .frame(maxWidth: .infinity)
-            .background(Color.black.edgesIgnoringSafeArea(.all))
+            .background(Color.white.edgesIgnoringSafeArea(.all))
             .navigationBarHidden(true)
         }
         .onAppear {
@@ -355,13 +355,13 @@ struct ProfileButton: View {
     var body: some View {
         HStack {
             Image(systemName: icon)
-                .foregroundColor(.white)
+                .foregroundColor(.black)
                 .imageScale(.large)
             
             Text(title)
                 .font(.title3)
                 .bold()
-                .foregroundColor(.white)
+                .foregroundColor(.black)
             
             Spacer()
             

@@ -414,6 +414,37 @@ class FirestoreManager: ObservableObject{
         }
     }
     
+    func removeRouteImage(routeId: String, imageUrlToRemove: String, completion: @escaping (Bool) -> Void) {
+        let routeRef = db.collection("routes").document(routeId)
+        
+        // First get the current document to access existing images
+        routeRef.getDocument { (document, error) in
+            if let document = document, document.exists {
+                // Get current images array or create a new one if it doesn't exist
+                var currentImages = document.data()?["routeImages"] as? [String] ?? []
+                
+                // Remove the specific image URL from the array
+                currentImages.removeAll { $0 == imageUrlToRemove }
+                
+                // Update only the routeImages field with the modified array
+                routeRef.updateData([
+                    "routeImages": currentImages
+                ]) { error in
+                    if let error = error {
+                        print("Error removing route image: \(error)")
+                        completion(false)
+                    } else {
+                        print("Route image successfully removed!")
+                        completion(true)
+                    }
+                }
+            } else {
+                print("Document does not exist or error: \(error?.localizedDescription ?? "unknown error")")
+                completion(false)
+            }
+        }
+    }
+    
     func updateUserProfilePicture(userId: String, profilePictureURL: String, completion: @escaping (Bool) -> Void) {
         let userRef = db.collection("users").document(userId)
         

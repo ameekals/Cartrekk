@@ -120,8 +120,33 @@ class ProfileViewModel: ObservableObject {
     deinit {
         NotificationCenter.default.removeObserver(self)
     }
+    
+    func addImageToRoute(routeId: String, imageUrl: String) async {
+        await withCheckedContinuation { continuation in
+            db.updateRouteImages(routeId: routeId, newImageUrl: imageUrl) { result in
+                   if result {
+                       print("Successfully removed image from route")
+                   } else {
+                       print("Failed to remove image from route")
+                   }
+                   continuation.resume()
+               }
+           }
+    }
+    
+    func removeImageFromRoute(routeId: String, imageUrl: String) async {
+        await withCheckedContinuation { continuation in
+            db.removeRouteImage(routeId: routeId, imageUrlToRemove: imageUrl) { result in
+                if result {
+                    print("Successfully removed image from route")
+                } else {
+                    print("Failed to remove image from route")
+                }
+                continuation.resume()
+            }
+        }
+    }
 }
-
 struct ImagePicker: UIViewControllerRepresentable {
     @Binding var selectedImage: UIImage?
     @Environment(\.presentationMode) private var presentationMode
