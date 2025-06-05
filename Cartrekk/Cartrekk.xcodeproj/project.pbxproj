@@ -13,6 +13,9 @@
 		9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD02D4F0A34009116E6 /* FirebaseAuth */; };
 		9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD22D4F0A34009116E6 /* FirebaseCore */; };
 		9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 9BB60AD42D4F0A34009116E6 /* FirebaseFirestore */; };
+		AE738C442DE8164B005EF15D /* AWSCognitoIdentity in Frameworks */ = {isa = PBXBuildFile; productRef = AE738C432DE8164B005EF15D /* AWSCognitoIdentity */; };
+		AE738C462DE8164B005EF15D /* AWSCognitoIdentityProvider in Frameworks */ = {isa = PBXBuildFile; productRef = AE738C452DE8164B005EF15D /* AWSCognitoIdentityProvider */; };
+		AE738C482DE8164B005EF15D /* AWSCognitoSync in Frameworks */ = {isa = PBXBuildFile; productRef = AE738C472DE8164B005EF15D /* AWSCognitoSync */; };
 		AEA0BB622D5EAC980077C725 /* AWSS3 in Frameworks */ = {isa = PBXBuildFile; productRef = AEA0BB612D5EAC980077C725 /* AWSS3 */; };
 		AEA0BB642D5EAC980077C725 /* AWSS3Control in Frameworks */ = {isa = PBXBuildFile; productRef = AEA0BB632D5EAC980077C725 /* AWSS3Control */; };
 		AEA0BB662D5EAC980077C725 /* AWSS3Outposts in Frameworks */ = {isa = PBXBuildFile; productRef = AEA0BB652D5EAC980077C725 /* AWSS3Outposts */; };
@@ -82,14 +85,17 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AE738C462DE8164B005EF15D /* AWSCognitoIdentityProvider in Frameworks */,
 				AEA0BB622D5EAC980077C725 /* AWSS3 in Frameworks */,
 				AEA0BB662D5EAC980077C725 /* AWSS3Outposts in Frameworks */,
 				9B4DE6562D59DEDA002FCF8C /* GoogleSignInSwift in Frameworks */,
 				9BB60AD32D4F0A34009116E6 /* FirebaseCore in Frameworks */,
+				AE738C482DE8164B005EF15D /* AWSCognitoSync in Frameworks */,
 				9B9A03B72D5B355900D58C92 /* Polyline in Frameworks */,
 				9B4DE6542D59DEDA002FCF8C /* GoogleSignIn in Frameworks */,
 				9BB60AD12D4F0A34009116E6 /* FirebaseAuth in Frameworks */,
 				AEA0BB642D5EAC980077C725 /* AWSS3Control in Frameworks */,
+				AE738C442DE8164B005EF15D /* AWSCognitoIdentity in Frameworks */,
 				9BB60AD52D4F0A34009116E6 /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -170,6 +176,9 @@
 				AEA0BB612D5EAC980077C725 /* AWSS3 */,
 				AEA0BB632D5EAC980077C725 /* AWSS3Control */,
 				AEA0BB652D5EAC980077C725 /* AWSS3Outposts */,
+				AE738C432DE8164B005EF15D /* AWSCognitoIdentity */,
+				AE738C452DE8164B005EF15D /* AWSCognitoIdentityProvider */,
+				AE738C472DE8164B005EF15D /* AWSCognitoSync */,
 			);
 			productName = Cartrekk;
 			productReference = 9B3090AB2D3B98C700451524 /* Cartrekk.app */;
@@ -461,7 +470,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = 87PW9875PV;
+				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
@@ -497,7 +506,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = 87PW9875PV;
+				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
@@ -668,7 +677,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Cartrekk/Preview Content\"";
-				DEVELOPMENT_TEAM = 87PW9875PV;
+				DEVELOPMENT_TEAM = DU69WZM376;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Cartrekk/Info.plist;
@@ -841,6 +850,21 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 9BB60ACE2D4F09C8009116E6 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseFirestore;
+		};
+		AE738C432DE8164B005EF15D /* AWSCognitoIdentity */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AEA0BB602D5EAC980077C725 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */;
+			productName = AWSCognitoIdentity;
+		};
+		AE738C452DE8164B005EF15D /* AWSCognitoIdentityProvider */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AEA0BB602D5EAC980077C725 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */;
+			productName = AWSCognitoIdentityProvider;
+		};
+		AE738C472DE8164B005EF15D /* AWSCognitoSync */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AEA0BB602D5EAC980077C725 /* XCRemoteSwiftPackageReference "aws-sdk-swift" */;
+			productName = AWSCognitoSync;
 		};
 		AEA0BB612D5EAC980077C725 /* AWSS3 */ = {
 			isa = XCSwiftPackageProductDependency;

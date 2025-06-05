@@ -516,6 +516,10 @@ struct MapView: View {
     @EnvironmentObject var authManager: AuthenticationManager
     @StateObject private var locationService = LocationTrackingService.shared
     @StateObject private var trackingManager = TrackingStateManager.shared
+    
+    
+    //@StateObject private var awsService = AWSService.shared
+    
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
@@ -664,11 +668,18 @@ struct MapView: View {
         
         Task {
             do {
-                let imageURL = try await uploadImageToS3(
-                    image: image,
-                    bucketName: "cartrekk-images"
-                )
+//                let imageURL = try await uploadImageToS3(
+//                    image: image,
+//                    bucketName: "cartrekk-images"
+//                )
                 
+                
+                
+                
+                
+                let imageURL = try await AWSService.shared.uploadImageToS3(image: image)
+                // Upload successful
+
                 DispatchQueue.main.async {
                     self.locationService.addImageToRoute(routeID: routeId, imageURL: imageURL)
                 }
