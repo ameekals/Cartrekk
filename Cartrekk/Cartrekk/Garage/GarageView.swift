@@ -557,6 +557,7 @@ struct TutorialDropdownView: View {
     }
 }
 
+
 // MARK: - Rarity Odds View
 struct RarityOddsView: View {
     let rarity: CarRarity
@@ -783,7 +784,7 @@ struct CarouselItemView: View {
                     scene: {
                         // Create a new scene and clone the car node
                         let newScene = SCNScene()
-                        newScene.background.contents = UIColor.black
+                        newScene.background.contents = UIColor.white
                         
                         // Clone the car node from the original scene
                         if let originalCarNode = scene.rootNode.childNodes.first {
@@ -811,7 +812,7 @@ struct CarouselItemView: View {
                     delegate: nil,
                     technique: nil
                 )
-                .background(Color.black)
+                .background(Color.white)
                 .scaleEffect(scale)
                 .opacity(opacity)
                 .allowsHitTesting(scale == 1.0) // Allow interaction only with center car

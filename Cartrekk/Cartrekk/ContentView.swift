@@ -32,7 +32,7 @@ struct ContentView: View {
                     tutorialManager.triggerTutorial()
                 })
                 .environmentObject(authManager)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
             } else if tutorialManager.showTutorial {
                 TutorialView(onComplete: {
                     // Only save tutorial as shown if it wasn't triggered manually
@@ -42,17 +42,17 @@ struct ContentView: View {
                     tutorialManager.showTutorial = false
                 })
                 .environmentObject(authManager)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
             } else {
                 MainAppView()
                     .environmentObject(authManager)
                     .environmentObject(tutorialManager) // Pass tutorial manager
-                    .preferredColorScheme(.dark)
+                    .preferredColorScheme(.light)
             }
         } else {
             LoginView(email: $email, password: $password)
                 .environmentObject(authManager)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
         }
     }
     
@@ -356,7 +356,7 @@ struct MainAppView: View {
             }
             .accentColor(.blue)
             .background(Color.black.edgesIgnoringSafeArea(.all))
-            .preferredColorScheme(.dark)
+            .preferredColorScheme(.light)
             // Hide tab bar when tracking is active
             .toolbar(trackingManager.isTracking ? .hidden : .visible, for: .tabBar)
             
